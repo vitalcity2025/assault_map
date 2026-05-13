@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYC Assault — 3D Spike Map · Vital City</title>
+<script src="https://unpkg.com/deck.gl@8.9.0/dist.min.js"></script>
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black:   #050507;
+  --white:   #ffffff;
+  --orange:  #ff7c53;
+  --indigo:  #394882;
+  --yellow:  #dde44c;
+  --magenta: #e7466d;
+  --charcoal:#707175;
+  --cloud:   #dddddd;
+  --fp: "halyard-text","Inter","Helvetica Neue",Arial,sans-serif;
+}
+html, body { width: 100%; height: 100%; background: var(--black); overflow: hidden; }
+body { font-family: var(--fp); font-weight: 300; color: var(--white); }
+
+/* Map container */
+#map { position: absolute; inset: 0; }
+
+/* Header */
+.header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 20px 24px 16px;
+  background: linear-gradient(to bottom, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0) 100%);
+  pointer-events: none;
+  z-index: 10;
+}
+.header-vc {
+  font-weight: 700; font-size: 9px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--orange);
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+.header-vc::after {
+  content: ""; display: block; height: 1px;
+  width: 32px; background: var(--orange);
+}
+.header-title {
+  font-family: "gascogne","Georgia",serif;
+  font-weight: 200; font-size: 36px;
+  color: var(--white); line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.header-title em { font-style: italic; color: var(--orange); }
+.header-sub {
+  font-weight: 300; font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 6px;
+}
+
+/* Controls panel */
+.controls {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 0 24px 24px;
+  background: linear-gradient(to top, rgba(5,5,7,0.97) 0%, rgba(5,5,7,0.7) 70%, rgba(5,5,7,0) 100%);
+  z-index: 10;
+}
+
+/* Year display */
+.year-display {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.year-num {
+  font-family: "gascogne","Georgia",serif;
+  font-weight: 200; font-size: 72px;
+  line-height: 1; letter-spacing: -0.03em;
+  color: var(--white);
+  text-shadow: 0 0 60px rgba(255,124,83,0.4);
+  transition: color 0.2s;
+}
+.year-num.playing { color: var(--orange); }
+.year-sub {
+  font-weight: 700; font-size: 10px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-top: 4px;
+}
+.year-counts {
+  font-weight: 300; font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 4px;
+}
+.year-counts strong { color: var(--white); font-weight: 700; }
+
+/* Slider */
+.slider-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+}
+.slider-label {
+  font-weight: 700; font-size: 9px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4); white-space: nowrap;
+}
+input[type=range] {
+  flex: 1; height: 3px;
+  -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px; cursor: pointer;
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 12px rgba(255,124,83,0.6);
+  cursor: pointer; transition: transform 0.1s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+input[type=range].playing::-webkit-slider-thumb { background: var(--yellow); box-shadow: 0 0 12px rgba(221,228,76,0.6); }
+
+/* Bottom row */
+.bottom-row {
+  display: flex; align-items: center; gap: 12px;
+}
+
+/* Play button */
+.play-btn {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 2px solid var(--orange);
+  background: none; color: var(--orange);
+  cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.play-btn:hover { background: var(--orange); color: var(--black); transform: scale(1.1); }
+.play-btn.playing { border-color: var(--yellow); color: var(--yellow); }
+.play-btn.playing:hover { background: var(--yellow); }
+
+/* Toggle pills */
+.pill-group { display: flex; gap: 3px; }
+.pill-btn {
+  font-family: var(--fp); font-weight: 700; font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: none; color: rgba(255,255,255,0.5);
+  padding: 6px 12px; cursor: pointer;
+  transition: all 0.1s;
+}
+.pill-btn:hover:not(.active) { border-color: rgba(255,255,255,0.5); color: var(--white); }
+.pill-btn.active { background: var(--white); color: var(--black); border-color: var(--white); }
+.pill-btn.active.felony { background: var(--orange); border-color: var(--orange); color: var(--black); }
+.pill-btn.active.misd { background: var(--indigo); border-color: var(--indigo); color: var(--white); }
+
+/* Speed control */
+.speed-group { display: flex; gap: 3px; margin-left: auto; }
+.speed-btn {
+  font-family: var(--fp); font-weight: 700; font-size: 10px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: none; color: rgba(255,255,255,0.4);
+  padding: 5px 8px; cursor: pointer; transition: all 0.1s;
+}
+.speed-btn.active { background: rgba(255,255,255,0.1); color: var(--white); border-color: rgba(255,255,255,0.4); }
+
+/* Legend */
+.legend {
+  position: absolute; top: 100px; right: 24px;
+  z-index: 10;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 9px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+}
+.legend-spike {
+  width: 10px; height: 24px;
+  border-radius: 2px 2px 0 0;
+}
+
+/* View mode toggle */
+.view-mode {
+  position: absolute; top: 20px; right: 24px;
+  z-index: 10; display: flex; gap: 3px;
+}
+
+/* Tooltip */
+.map-tooltip {
+  position: absolute; pointer-events: none;
+  background: rgba(5,5,7,0.95);
+  border-left: 3px solid var(--orange);
+  padding: 10px 14px; z-index: 20;
+  font-size: 13px; line-height: 1.6;
+  white-space: nowrap; opacity: 0;
+  transition: opacity 0.15s;
+}
+.map-tooltip.visible { opacity: 1; }
+.tooltip-pct { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.tooltip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* Loading */
+#loading {
+  position: absolute; inset: 0; z-index: 50;
+  background: var(--black);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.loading-title {
+  font-family: "gascogne","Georgia",serif;
+  font-weight: 200; font-size: 28px; color: var(--white);
+}
+.loading-sub { font-size: 13px; color: var(--charcoal); }
+.loading-bar-bg {
+  width: 200px; height: 2px;
+  background: rgba(255,255,255,0.1);
+}
+.loading-bar {
+  height: 100%; background: var(--orange);
+  width: 0; transition: width 0.3s;
+}
+
+/* Error */
+#error {
+  position: absolute; inset: 0; z-index: 50;
+  background: var(--black);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  text-align: center; padding: 2rem;
+}
+#error h2 { font-size: 18px; font-weight: 700; color: var(--white); }
+#error p { font-size: 13px; color: var(--charcoal); line-height: 1.6; }
+#error code { background: rgba(255,255,255,0.08); padding: 2px 6px; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Loading screen -->
+<div id="loading">
+  <div style="font-weight:700;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--orange);">Vital City</div>
+  <div class="loading-title">Loading assault data…</div>
+  <div class="loading-bar-bg"><div class="loading-bar" id="loading-bar"></div></div>
+  <div class="loading-sub" id="loading-sub">Fetching assault_data.json…</div>
+</div>
+
+<!-- Error screen -->
+<div id="error">
+  <h2>Data unavailable</h2>
+  <p>Could not load assault data from the Vital City server.<br>
+  Check your internet connection and try reloading.</p>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-vc">Vital City</div>
+  <div class="header-title">NYC <em>assault</em> — 3D map</div>
+  <div class="header-sub">Felony and misdemeanor assault complaints by precinct · 2006–2025</div>
+</div>
+
+<!-- View mode (yearly/monthly) -->
+<div class="view-mode" id="view-mode">
+  <button class="pill-btn active" data-val="yearly" onclick="setViewMode('yearly',this)">Yearly</button>
+  <button class="pill-btn" data-val="monthly" onclick="setViewMode('monthly',this)">Monthly</button>
+</div>
+
+<!-- Legend -->
+<div class="legend" id="legend" style="display:none;">
+  <div class="legend-item">
+    <div class="legend-spike" style="background:var(--orange);"></div>
+    Felony assault
+  </div>
+  <div class="legend-item">
+    <div class="legend-spike" style="background:var(--indigo);"></div>
+    Misdemeanor assault
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="map-tooltip" id="tooltip"></div>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="year-display">
+    <div class="year-num" id="year-num">2025</div>
+    <div class="year-sub" id="year-sub">ANNUAL TOTAL</div>
+    <div class="year-counts" id="year-counts"></div>
+  </div>
+  <div class="slider-row">
+    <span class="slider-label" id="slider-min">2006</span>
+    <input type="range" id="time-slider" min="0" max="19" value="19" step="1">
+    <span class="slider-label" id="slider-max">2025</span>
+  </div>
+  <div class="bottom-row">
+    <button class="play-btn" id="play-btn" onclick="togglePlay()" title="Play animation">▶</button>
+    <div class="pill-group">
+      <button class="pill-btn active" data-val="combined" onclick="setOffense('combined',this)">Combined</button>
+      <button class="pill-btn felony" data-val="felony" onclick="setOffense('felony',this)">Felony</button>
+      <button class="pill-btn misd" data-val="misd" onclick="setOffense('misd',this)">Misdemeanor</button>
+    </div>
+    <div class="speed-group">
+      <span class="slider-label" style="margin-right:4px;">Speed</span>
+      <button class="speed-btn active" data-ms="1200" onclick="setSpeed(1200,this)">1×</button>
+      <button class="speed-btn" data-ms="600" onclick="setSpeed(600,this)">2×</button>
+      <button class="speed-btn" data-ms="300" onclick="setSpeed(300,this)">4×</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================================================
+// PRECINCT CENTROIDS (lat/lng)
+// =============================================================================
+const PRECINCT_CENTROIDS = {
+  1:  [-74.0131, 40.7201], 5:  [-73.9975, 40.7163], 6:  [-74.0033, 40.7328],
+  7:  [-73.9845, 40.7154], 9:  [-73.9879, 40.7260], 10: [-73.9972, 40.7468],
+  13: [-73.9856, 40.7385], 14: [-73.9937, 40.7549], 17: [-73.9772, 40.7516],
+  18: [-73.9844, 40.7635], 19: [-73.9546, 40.7694], 20: [-73.9784, 40.7820],
+  22: [-73.9654, 40.7833], 23: [-73.9399, 40.7965], 24: [-73.9649, 40.7947],
+  25: [-73.9351, 40.8036], 26: [-73.9550, 40.8096], 28: [-73.9499, 40.8165],
+  30: [-73.9364, 40.8241], 32: [-73.9441, 40.8310], 33: [-73.9383, 40.8447],
+  34: [-73.9279, 40.8517],
+  40: [-73.9247, 40.8138], 41: [-73.8982, 40.8269], 42: [-73.9156, 40.8360],
+  43: [-73.8880, 40.8157], 44: [-73.9228, 40.8241], 45: [-73.8936, 40.8462],
+  46: [-73.8978, 40.8540], 47: [-73.9012, 40.8655], 48: [-73.8854, 40.8581],
+  49: [-73.8640, 40.8605], 50: [-73.9044, 40.8880], 52: [-73.8933, 40.8782],
+  53: [-73.8619, 40.8924],
+  61: [-73.9786, 40.5768], 62: [-73.9593, 40.5876], 63: [-74.0302, 40.6219],
+  66: [-73.9988, 40.6254], 67: [-73.9421, 40.6641], 68: [-74.0197, 40.6375],
+  69: [-73.9076, 40.6371], 70: [-73.9583, 40.6440], 71: [-73.9492, 40.6688],
+  72: [-74.0010, 40.6524], 73: [-73.9129, 40.6590], 75: [-73.8815, 40.6528],
+  76: [-73.9981, 40.6782], 77: [-73.9530, 40.6741], 78: [-73.9747, 40.6768],
+  79: [-73.9237, 40.6904], 81: [-73.9390, 40.6938], 83: [-73.9125, 40.7019],
+  84: [-73.9879, 40.6963], 88: [-73.9830, 40.6859], 90: [-73.9519, 40.7176],
+  94: [-73.9930, 40.5760],
+  100:[-73.8492, 40.6588], 101:[-73.7951, 40.6074], 102:[-73.8347, 40.6943],
+  103:[-73.8656, 40.7454], 104:[-73.8768, 40.7043], 105:[-73.7583, 40.7283],
+  106:[-73.8584, 40.6745], 107:[-73.7915, 40.7460], 108:[-73.9087, 40.7449],
+  109:[-73.8308, 40.7628], 110:[-73.8712, 40.7398], 111:[-73.7621, 40.7742],
+  112:[-73.8427, 40.7201], 113:[-73.7798, 40.6951], 114:[-73.9334, 40.7574],
+  115:[-73.8823, 40.7479],
+  120:[-74.0972, 40.6381], 121:[-74.1432, 40.5917], 122:[-74.0888, 40.5943],
+  123:[-74.1886, 40.5328],
+};
+
+const PRECINCT_NAMES = {
+  1:"Financial District",5:"Chinatown/LES",6:"West Village",7:"Lower East Side",
+  9:"East Village",10:"Chelsea/Hell's Kitchen",13:"Gramercy",14:"Midtown South",
+  17:"Midtown East",18:"Midtown North",19:"Upper East Side",20:"Upper West Side",
+  22:"Central Park",23:"East Harlem",24:"UWS/Manhattan Valley",25:"East Harlem",
+  26:"Morningside Heights",28:"Harlem",30:"West Harlem",32:"Harlem",
+  33:"Washington Heights",34:"Washington Heights",40:"Mott Haven",41:"Longwood",
+  42:"Morrisania",43:"Hunts Point",44:"Melrose",45:"Tremont",46:"East Tremont",
+  47:"Fordham",48:"Belmont",49:"Pelham Parkway",50:"Riverdale",52:"Kingsbridge",
+  53:"Wakefield",61:"Coney Island",62:"Brighton Beach",63:"Bay Ridge",
+  66:"Bensonhurst",67:"Crown Heights N.",68:"Bay Ridge/Dyker Hts",69:"Canarsie",
+  70:"Flatbush",71:"Crown Heights S.",72:"Sunset Park",73:"Brownsville",
+  75:"East New York",76:"Carroll Gardens",77:"Crown Heights",78:"Park Slope",
+  79:"Bushwick",81:"Bed-Stuy",83:"Bushwick E.",84:"Brooklyn Heights",
+  88:"Boerum Hill",90:"Greenpoint/Williamsburg",94:"Sea Gate",
+  100:"Howard Beach",101:"Far Rockaway",102:"Richmond Hill",
+  103:"Jackson Heights",104:"Middle Village",105:"Queens Village",
+  106:"Ozone Park",107:"Fresh Meadows",108:"Sunnyside",109:"Flushing",
+  110:"Corona/Elmhurst",111:"Bayside",112:"Forest Hills",113:"Jamaica",
+  114:"Astoria/LIC",115:"Jackson Hts/Elmhurst",
+  120:"St. George",121:"New Springville",122:"South Beach",123:"Tottenville"
+};
+
+// =============================================================================
+// STATE
+// =============================================================================
+let deckgl = null;
+let PCT_MAP = null;
+let viewMode = "yearly";   // yearly | monthly
+let offenseMode = "combined"; // combined | felony | misd
+let timeIndex = 0;
+let timeSteps = [];        // [{label, year, month?}]
+let playing = false;
+let playInterval = null;
+let playSpeed = 1200;
+let hoveredPrecinct = null;
+
+// =============================================================================
+// DATA HELPERS
+// =============================================================================
+function getPctData(pct, year, month) {
+  // Returns {felony, misd, total} for a given precinct/year/month
+  try {
+    const felMap = PCT_MAP?.complaints?.["FELONY ASSAULT"]?.Patrol?.[`pct_${pct}`]?.[String(year)];
+    const misdMap = PCT_MAP?.complaints?.["ASSAULT 3 & RELATED OFFENSES"]?.Patrol?.[`pct_${pct}`]?.[String(year)];
+    // Also add subway + housing
+    const felSub = PCT_MAP?.complaints?.["FELONY ASSAULT"]?.Subway?.[`pct_${pct}`]?.[String(year)];
+    const misdSub = PCT_MAP?.complaints?.["ASSAULT 3 & RELATED OFFENSES"]?.Subway?.[`pct_${pct}`]?.[String(year)];
+    const felHou = PCT_MAP?.complaints?.["FELONY ASSAULT"]?.Housing?.[`pct_${pct}`]?.[String(year)];
+    const misdHou = PCT_MAP?.complaints?.["ASSAULT 3 & RELATED OFFENSES"]?.Housing?.[`pct_${pct}`]?.[String(year)];
+
+    function sumMap(m, mo) {
+      if (!m) return 0;
+      if (mo !== undefined) return m[String(mo)] || 0;
+      return Object.values(m).reduce((s,v)=>s+(v||0),0);
+    }
+
+    const felony = sumMap(felMap,month) + sumMap(felSub,month) + sumMap(felHou,month);
+    const misd   = sumMap(misdMap,month) + sumMap(misdSub,month) + sumMap(misdHou,month);
+    return { felony, misd, total: felony + misd };
+  } catch { return { felony:0, misd:0, total:0 }; }
+}
+
+function buildTimeSteps() {
+  if (viewMode === "yearly") {
+    const years = [];
+    for (let y = 2006; y <= 2025; y++) years.push({ label: String(y), year: y });
+    return years;
+  } else {
+    const steps = [];
+    const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    for (let y = 2006; y <= 2025; y++) {
+      for (let m = 1; m <= 12; m++) {
+        steps.push({ label: `${MO[m-1]} ${y}`, year: y, month: m });
+      }
+    }
+    return steps;
+  }
+}
+
+function getStepCounts(step) {
+  // Citywide totals for current step
+  let felony = 0, misd = 0;
+  Object.keys(PRECINCT_CENTROIDS).forEach(pct => {
+    const d = getPctData(parseInt(pct), step.year, step.month);
+    felony += d.felony; misd += d.misd;
+  });
+  return { felony, misd, total: felony + misd };
+}
+
+// =============================================================================
+// DECK.GL LAYER
+// =============================================================================
+function getSpikeColor(felony, misd) {
+  if (offenseMode === "felony")   return [255, 124, 83, 230];   // orange
+  if (offenseMode === "misd")     return [57, 72, 130, 230];    // indigo
+  // Combined: interpolate between indigo (mostly misd) and orange (mostly felony)
+  const total = felony + misd;
+  if (total === 0) return [80, 80, 80, 100];
+  const felRatio = felony / total;
+  const r = Math.round(57  + (255 - 57)  * felRatio);
+  const g = Math.round(72  + (124 - 72)  * felRatio);
+  const b = Math.round(130 + (83  - 130) * felRatio);
+  return [r, g, b, 220];
+}
+
+function buildLayer() {
+  const step = timeSteps[timeIndex];
+  if (!step) return null;
+
+  // Build data array
+  const data = [];
+  // Find max for normalization
+  let maxVal = 1;
+  Object.keys(PRECINCT_CENTROIDS).forEach(pct => {
+    const d = getPctData(parseInt(pct), step.year, step.month);
+    const val = offenseMode === "felony" ? d.felony
+              : offenseMode === "misd"   ? d.misd
+              : d.total;
+    if (val > maxVal) maxVal = val;
+  });
+
+  Object.entries(PRECINCT_CENTROIDS).forEach(([pct, [lng, lat]]) => {
+    const d = getPctData(parseInt(pct), step.year, step.month);
+    const val = offenseMode === "felony" ? d.felony
+              : offenseMode === "misd"   ? d.misd
+              : d.total;
+    data.push({
+      pct: parseInt(pct),
+      lng, lat,
+      felony: d.felony,
+      misd: d.misd,
+      total: d.total,
+      val,
+      ratio: val / maxVal
+    });
+  });
+
+  return new deck.ColumnLayer({
+    id: "spikes",
+    data,
+    diskResolution: 6,   // hexagonal spikes
+    radius: 280,
+    extruded: true,
+    getPosition: d => [d.lng, d.lat],
+    getElevation: d => d.ratio * 18000,
+    getFillColor: d => getSpikeColor(d.felony, d.misd),
+    getLineColor: [0, 0, 0, 0],
+    elevationScale: 1,
+    pickable: true,
+    autoHighlight: true,
+    highlightColor: [255, 228, 76, 255],
+    updateTriggers: {
+      getElevation: [timeIndex, offenseMode],
+      getFillColor: [timeIndex, offenseMode]
+    },
+    transitions: {
+      getElevation: { duration: 400, easing: t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t },
+      getFillColor: { duration: 300 }
+    },
+    onHover: ({ object, x, y }) => {
+      const tt = document.getElementById("tooltip");
+      if (object) {
+        const name = PRECINCT_NAMES[object.pct] || "";
+        const step = timeSteps[timeIndex];
+        tt.innerHTML = `
+          <strong style="font-weight:700;font-size:14px;">Pct. ${object.pct}${name?" — "+name:""}</strong><br>
+          <span style="font-size:12px;color:rgba(255,255,255,0.7);">${step.label}</span>
+          <div class="tooltip-pct" style="margin-top:6px;">
+            <div class="tooltip-dot" style="background:#ff7c53;"></div>
+            <span>Felony: <strong>${object.felony.toLocaleString()}</strong></span>
+          </div>
+          <div class="tooltip-pct">
+            <div class="tooltip-dot" style="background:#394882;"></div>
+            <span>Misdemeanor: <strong>${object.misd.toLocaleString()}</strong></span>
+          </div>
+          <div class="tooltip-pct" style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.1);">
+            <span style="color:rgba(255,255,255,0.6);">Total: <strong style="color:white;">${object.total.toLocaleString()}</strong></span>
+          </div>`;
+        tt.style.left = (x + 16) + "px";
+        tt.style.top  = (y - 80) + "px";
+        tt.classList.add("visible");
+      } else {
+        tt.classList.remove("visible");
+      }
+    }
+  });
+}
+
+// =============================================================================
+// UPDATE UI
+// =============================================================================
+function updateUI() {
+  const step = timeSteps[timeIndex];
+  if (!step) return;
+
+  // Year/month display
+  document.getElementById("year-num").textContent = step.label;
+  document.getElementById("year-sub").textContent =
+    viewMode === "monthly" ? "MONTHLY TOTAL" : "ANNUAL TOTAL";
+
+  // Counts
+  const counts = getStepCounts(step);
+  const displayed = offenseMode === "felony" ? counts.felony
+                  : offenseMode === "misd"   ? counts.misd
+                  : counts.total;
+  document.getElementById("year-counts").innerHTML =
+    offenseMode === "combined"
+      ? `<strong>${counts.total.toLocaleString()}</strong> total &nbsp;·&nbsp; <span style="color:#ff7c53;">${counts.felony.toLocaleString()} felony</span> &nbsp;·&nbsp; <span style="color:#9b9fbc;">${counts.misd.toLocaleString()} misd.</span>`
+      : `<strong>${displayed.toLocaleString()}</strong> ${offenseMode === "felony" ? "felony" : "misdemeanor"} assaults`;
+
+  // Slider
+  const slider = document.getElementById("time-slider");
+  slider.value = timeIndex;
+
+  // Playing state
+  document.getElementById("year-num").classList.toggle("playing", playing);
+  slider.classList.toggle("playing", playing);
+  document.getElementById("play-btn").textContent = playing ? "⏸" : "▶";
+  document.getElementById("play-btn").classList.toggle("playing", playing);
+}
+
+function updateLayer() {
+  if (!deckgl) return;
+  const layer = buildLayer();
+  if (layer) deckgl.setProps({ layers: [layer] });
+  updateUI();
+}
+
+// =============================================================================
+// CONTROLS
+// =============================================================================
+function setViewMode(mode, btn) {
+  viewMode = mode;
+  document.querySelectorAll("#view-mode .pill-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  stopPlay();
+  timeSteps = buildTimeSteps();
+  timeIndex = timeSteps.length - 1;
+  const slider = document.getElementById("time-slider");
+  slider.max = String(timeSteps.length - 1);
+  slider.value = String(timeIndex);
+  document.getElementById("slider-min").textContent = timeSteps[0].label;
+  document.getElementById("slider-max").textContent = timeSteps[timeSteps.length-1].label;
+  updateLayer();
+}
+
+function setOffense(mode, btn) {
+  offenseMode = mode;
+  document.querySelectorAll(".pill-group .pill-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  // Legend
+  document.getElementById("legend").style.display = mode === "combined" ? "flex" : "none";
+  updateLayer();
+}
+
+function setSpeed(ms, btn) {
+  playSpeed = ms;
+  document.querySelectorAll(".speed-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  if (playing) { stopPlay(); startPlay(); }
+}
+
+function startPlay() {
+  playing = true;
+  playInterval = setInterval(() => {
+    timeIndex = (timeIndex + 1) % timeSteps.length;
+    updateLayer();
+    // Stop at end
+    if (timeIndex === timeSteps.length - 1) {
+      setTimeout(stopPlay, playSpeed);
+    }
+  }, playSpeed);
+  updateUI();
+}
+
+function stopPlay() {
+  playing = false;
+  clearInterval(playInterval);
+  playInterval = null;
+  updateUI();
+}
+
+function togglePlay() {
+  if (playing) { stopPlay(); } else { startPlay(); }
+}
+
+// Slider input
+document.getElementById("time-slider").addEventListener("input", e => {
+  stopPlay();
+  timeIndex = parseInt(e.target.value);
+  updateLayer();
+});
+
+// =============================================================================
+// INIT DECK.GL
+// =============================================================================
+function initMap() {
+  const MAPTILER_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json";
+
+  deckgl = new deck.DeckGL({
+    container: "map",
+    map: maplibregl,
+    mapStyle: MAPTILER_STYLE,
+    initialViewState: {
+      longitude: -73.97,
+      latitude: 40.71,
+      zoom: 10.5,
+      pitch: 55,
+      bearing: -15
+    },
+    controller: true,
+    layers: [],
+    getTooltip: null  // handled manually above
+  });
+
+  // Build time steps
+  timeSteps = buildTimeSteps();
+  timeIndex = timeSteps.length - 1; // start at most recent
+
+  const slider = document.getElementById("time-slider");
+  slider.max = String(timeSteps.length - 1);
+  slider.value = String(timeIndex);
+  document.getElementById("slider-min").textContent = timeSteps[0].label;
+  document.getElementById("slider-max").textContent = timeSteps[timeSteps.length-1].label;
+
+  // Small delay to let map tiles start loading
+  setTimeout(() => {
+    updateLayer();
+    document.getElementById("loading").style.display = "none";
+  }, 800);
+}
+
+// =============================================================================
+// BOOT
+// =============================================================================
+async function boot() {
+  const loadBar = document.getElementById("loading-bar");
+  const loadSub = document.getElementById("loading-sub");
+
+  try {
+    loadSub.textContent = "Fetching assault_data.json…";
+    loadBar.style.width = "20%";
+
+    const resp = await fetch("https://vitalcity2025.github.io/Assault_explorer/assault_data.json");
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    loadSub.textContent = "Parsing data…";
+    loadBar.style.width = "60%";
+
+    const raw = await resp.json();
+    PCT_MAP = raw.precinct_map;
+
+    loadSub.textContent = "Initializing map…";
+    loadBar.style.width = "85%";
+
+    setTimeout(() => {
+      loadBar.style.width = "100%";
+      setTimeout(initMap, 200);
+    }, 200);
+
+  } catch(e) {
+    console.error("Boot failed:", e);
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("error").style.display = "flex";
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
