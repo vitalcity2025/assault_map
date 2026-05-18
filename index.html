@@ -26,17 +26,25 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 .hd-title{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:34px;color:var(--white);line-height:1.1;letter-spacing:-.02em;}
 .hd-title em{font-style:italic;color:var(--orange);}
 .hd-sub{font-weight:300;font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;}
-.top-right{position:absolute;top:20px;right:20px;z-index:10;display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
+
+.top-right{position:absolute;top:20px;right:20px;z-index:10;display:flex;flex-direction:column;gap:5px;align-items:flex-end;pointer-events:auto;}
+.tr-group{background:rgba(5,5,7,.85);padding:6px 8px;border-left:2px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
+.tr-label{font-weight:700;font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.4);}
 .view-pills{display:flex;gap:2px;}
-.pill-sm{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);background:rgba(5,5,7,.8);color:rgba(255,255,255,.5);padding:5px 10px;cursor:pointer;transition:all .1s;}
+.pill-sm{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);background:rgba(5,5,7,.6);color:rgba(255,255,255,.5);padding:5px 10px;cursor:pointer;transition:all .1s;}
 .pill-sm:hover:not(.active){border-color:rgba(255,255,255,.5);color:var(--white);}
 .pill-sm.active{background:var(--white);color:var(--black);border-color:var(--white);}
-.icon-btn{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);background:rgba(5,5,7,.8);color:rgba(255,255,255,.5);padding:5px 10px;cursor:pointer;transition:all .1s;display:flex;align-items:center;gap:5px;}
+.icon-btn{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);background:rgba(5,5,7,.6);color:rgba(255,255,255,.5);padding:5px 10px;cursor:pointer;transition:all .1s;display:flex;align-items:center;gap:5px;}
 .icon-btn:hover{border-color:rgba(255,255,255,.5);color:var(--white);}
 .icon-btn.active{border-color:var(--yellow);color:var(--yellow);background:rgba(221,228,76,.08);}
 .spin-icon{display:inline-block;}
 .icon-btn.active .spin-icon{animation:spin 3s linear infinite;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+.toggle-row{display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.55);cursor:pointer;user-select:none;}
+.toggle-row input{accent-color:var(--orange);width:13px;height:13px;cursor:pointer;}
+.toggle-row:hover{color:var(--white);}
+
 .controls{position:absolute;bottom:0;left:0;right:0;z-index:10;padding:0 24px 20px;background:linear-gradient(to top,rgba(5,5,7,.97) 0%,rgba(5,5,7,.75) 65%,rgba(5,5,7,0) 100%);}
 .year-display{text-align:center;margin-bottom:12px;}
 .year-num{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:68px;line-height:1;letter-spacing:-.03em;color:var(--white);text-shadow:0 0 60px rgba(255,124,83,.35);transition:color .2s;}
@@ -44,12 +52,14 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 .year-sub{font-weight:700;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:3px;}
 .year-counts{font-weight:300;font-size:12px;color:rgba(255,255,255,.55);margin-top:3px;}
 .year-counts strong{color:var(--white);font-weight:700;}
+
 .slider-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 .slider-label{font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);white-space:nowrap;}
 input[type=range]{flex:1;height:3px;-webkit-appearance:none;appearance:none;background:rgba(255,255,255,.12);border-radius:2px;cursor:pointer;outline:none;}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--orange);box-shadow:0 0 10px rgba(255,124,83,.5);cursor:pointer;transition:transform .1s;}
 input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3);}
 input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
+
 .bottom-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .play-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--orange);background:none;color:var(--orange);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
 .play-btn:hover{background:var(--orange);color:var(--black);transform:scale(1.1);}
@@ -64,17 +74,18 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 .speed-lbl{font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-right:4px;}
 .speed-btn{font-family:var(--fp);font-weight:700;font-size:9px;border:1px solid rgba(255,255,255,.12);background:none;color:rgba(255,255,255,.35);padding:5px 8px;cursor:pointer;transition:all .1s;}
 .speed-btn.active{background:rgba(255,255,255,.08);color:var(--white);border-color:rgba(255,255,255,.35);}
-.legend{position:absolute;bottom:160px;right:20px;z-index:10;background:rgba(5,5,7,.8);padding:10px 12px;border-left:2px solid rgba(255,255,255,.08);}
+
+.legend{position:absolute;bottom:160px;right:20px;z-index:10;background:rgba(5,5,7,.85);padding:10px 12px;border-left:2px solid rgba(255,255,255,.08);}
 .legend-title{font-weight:700;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:7px;}
 .legend-bar{width:90px;height:8px;border-radius:1px;background:linear-gradient(to right,#141482,#0050c8,#00aaff,#44dd88,#ffdd00,#ff7c53,#e7466d);}
 .legend-row{display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,.35);margin-top:3px;}
+
 .map-tooltip{position:absolute;pointer-events:none;background:rgba(5,5,7,.96);border-left:3px solid var(--orange);padding:10px 14px;z-index:20;font-size:12px;line-height:1.7;white-space:nowrap;opacity:0;transition:opacity .12s;}
 .map-tooltip.visible{opacity:1;}
-.tt-row{display:flex;align-items:center;gap:7px;}
-.tt-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.tt-rank{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-top:2px;}
+
 .scroll-hint{position:absolute;bottom:82px;left:50%;transform:translateX(-50%);font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.2);z-index:10;pointer-events:none;transition:opacity .4s;display:flex;flex-direction:column;align-items:center;gap:3px;animation:bob 2s ease-in-out infinite;}
 @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(5px)}}
+
 #chart-section{background:var(--black);padding:48px 48px 64px;border-top:1px solid rgba(255,255,255,.06);}
 .chart-eyebrow{font-weight:700;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--orange);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .chart-eyebrow::after{content:"";display:block;height:1px;width:28px;background:var(--orange);}
@@ -82,6 +93,7 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 .chart-subtext{font-weight:300;font-size:13px;color:rgba(255,255,255,.4);margin-bottom:28px;}
 .chart-wrap{position:relative;height:200px;}
 .chart-source{font-size:11px;color:rgba(255,255,255,.22);margin-top:16px;line-height:1.6;}
+
 #loading{position:fixed;inset:0;z-index:100;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
 .ld-vc{font-weight:700;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--orange);}
 .ld-title{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:26px;color:var(--white);}
@@ -103,32 +115,52 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 </div>
 <div id="err">
   <h2>Data unavailable</h2>
-  <p>Could not load assault data.<br>Check your internet connection and try reloading.</p>
+  <p>Could not load assault map data.<br>Check your internet connection and try reloading.</p>
 </div>
 
 <div id="map-section">
   <div id="map"></div>
   <div class="header">
     <div class="hd-vc">Vital City</div>
-    <div class="hd-title">NYC <em>assault</em> &#8212; 3D spike map</div>
-    <div class="hd-sub">Complaints by precinct &#183; drag to pan &#183; right-click drag to rotate</div>
+    <div class="hd-title">NYC <em>assault</em> &#8212; 3D map</div>
+    <div class="hd-sub">Felony &amp; misdemeanor complaints by location &#183; drag to pan &#183; right-click drag to rotate</div>
   </div>
+
   <div class="top-right">
-    <div class="view-pills">
-      <button class="pill-sm active" onclick="setViewMode('yearly',this)">Yearly</button>
-      <button class="pill-sm" onclick="setViewMode('monthly',this)">Monthly</button>
+    <div class="tr-group">
+      <div class="tr-label">Time</div>
+      <div class="view-pills">
+        <button class="pill-sm active" onclick="setViewMode('yearly',this)">Yearly</button>
+        <button class="pill-sm" onclick="setViewMode('monthly',this)">Monthly</button>
+      </div>
+    </div>
+    <div class="tr-group">
+      <div class="tr-label">Map style</div>
+      <div class="view-pills">
+        <button class="pill-sm active" onclick="setMapStyle('hex',this)">3D Hex</button>
+        <button class="pill-sm" onclick="setMapStyle('heat',this)">Heatmap</button>
+      </div>
+    </div>
+    <div class="tr-group">
+      <label class="toggle-row">
+        <input type="checkbox" id="exclude-stations" checked onchange="toggleStations(this.checked)">
+        Exclude precinct stations
+      </label>
     </div>
     <button class="icon-btn" id="rotate-btn" onclick="toggleRotate()">
       <span class="spin-icon">&#8635;</span> Auto-rotate
     </button>
     <button class="icon-btn" onclick="resetView()">&#8634; Reset view</button>
   </div>
+
   <div class="legend">
-    <div class="legend-title">Assault intensity</div>
+    <div class="legend-title">Assault density</div>
     <div class="legend-bar"></div>
     <div class="legend-row"><span>Low</span><span>High</span></div>
   </div>
+
   <div class="map-tooltip" id="tooltip"></div>
+
   <div class="controls">
     <div class="year-display">
       <div class="year-num" id="year-num">2025</div>
@@ -156,8 +188,7 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     </div>
   </div>
   <div class="scroll-hint" id="scroll-hint">
-    <span>&#8595;</span>
-    <span>Scroll for trend chart</span>
+    <span>&#8595;</span><span>Scroll for trend chart</span>
   </div>
 </div>
 
@@ -166,255 +197,460 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
   <div class="chart-heading">Citywide assault over time</div>
   <div class="chart-subtext">Total complaints by year &#183; highlighted dot tracks the map</div>
   <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
-  <div class="chart-source">Source: NYPD Complaint Data Historic and Current YTD, NYC Open Data. Felony and misdemeanor assault complaints, 2006-2025.</div>
+  <div class="chart-source">Source: NYPD Complaint Data Historic and Current YTD, NYC Open Data. Felony and misdemeanor assault complaints geocoded by NYPD, 2006-2025. Locations rounded to a ~110m grid for aggregation.</div>
 </div>
 
 <script>
-var PCT_CENTROIDS={1:[-74.0131,40.7201],5:[-73.9975,40.7163],6:[-74.0033,40.7328],7:[-73.9845,40.7154],9:[-73.9879,40.726],10:[-73.9972,40.7468],13:[-73.9856,40.7385],14:[-73.9937,40.7549],17:[-73.9772,40.7516],18:[-73.9844,40.7635],19:[-73.9546,40.7694],20:[-73.9784,40.782],22:[-73.9654,40.7833],23:[-73.9399,40.7965],24:[-73.9649,40.7947],25:[-73.9351,40.8036],26:[-73.955,40.8096],28:[-73.9499,40.8165],30:[-73.9364,40.8241],32:[-73.9441,40.831],33:[-73.9383,40.8447],34:[-73.9279,40.8517],40:[-73.9247,40.8138],41:[-73.8982,40.8269],42:[-73.9156,40.836],43:[-73.888,40.8157],44:[-73.9228,40.8241],45:[-73.8936,40.8462],46:[-73.8978,40.854],47:[-73.9012,40.8655],48:[-73.8854,40.8581],49:[-73.864,40.8605],50:[-73.9044,40.888],52:[-73.8933,40.8782],53:[-73.8619,40.8924],61:[-73.9786,40.5768],62:[-73.9593,40.5876],63:[-74.0302,40.6219],66:[-73.9988,40.6254],67:[-73.9421,40.6641],68:[-74.0197,40.6375],69:[-73.9076,40.6371],70:[-73.9583,40.644],71:[-73.9492,40.6688],72:[-74.001,40.6524],73:[-73.9129,40.659],75:[-73.8815,40.6528],76:[-73.9981,40.6782],77:[-73.953,40.6741],78:[-73.9747,40.6768],79:[-73.9237,40.6904],81:[-73.939,40.6938],83:[-73.9125,40.7019],84:[-73.9879,40.6963],88:[-73.983,40.6859],90:[-73.9519,40.7176],94:[-73.993,40.576],100:[-73.8492,40.6588],101:[-73.7951,40.6074],102:[-73.8347,40.6943],103:[-73.8656,40.7454],104:[-73.8768,40.7043],105:[-73.7583,40.7283],106:[-73.8584,40.6745],107:[-73.7915,40.746],108:[-73.9087,40.7449],109:[-73.8308,40.7628],110:[-73.8712,40.7398],111:[-73.7621,40.7742],112:[-73.8427,40.7201],113:[-73.7798,40.6951],114:[-73.9334,40.7574],115:[-73.8823,40.7479],120:[-74.0972,40.6381],121:[-74.1432,40.5917],122:[-74.0888,40.5943],123:[-74.1886,40.5328]};
-var PCT_NAMES={1:"Financial District",5:"Chinatown/LES",6:"West Village",7:"Lower East Side",9:"East Village",10:"Chelsea/Hell's Kitchen",13:"Gramercy",14:"Midtown South",17:"Midtown East",18:"Midtown North",19:"Upper East Side",20:"Upper West Side",22:"Central Park",23:"East Harlem",24:"UWS/Manhattan Valley",25:"East Harlem",26:"Morningside Heights",28:"Harlem",30:"West Harlem",32:"Harlem",33:"Washington Heights",34:"Washington Heights",40:"Mott Haven",41:"Longwood",42:"Morrisania",43:"Hunts Point",44:"Melrose",45:"Tremont",46:"East Tremont",47:"Fordham",48:"Belmont",49:"Pelham Parkway",50:"Riverdale",52:"Kingsbridge",53:"Wakefield",61:"Coney Island",62:"Brighton Beach",63:"Bay Ridge",66:"Bensonhurst",67:"Crown Heights N.",68:"Bay Ridge/Dyker Hts",69:"Canarsie",70:"Flatbush",71:"Crown Heights S.",72:"Sunset Park",73:"Brownsville",75:"East New York",76:"Carroll Gardens",77:"Crown Heights",78:"Park Slope",79:"Bushwick",81:"Bed-Stuy",83:"Bushwick E.",84:"Brooklyn Heights",88:"Boerum Hill",90:"Greenpoint/Wburg",94:"Sea Gate",100:"Howard Beach",101:"Far Rockaway",102:"Richmond Hill",103:"Jackson Heights",104:"Middle Village",105:"Queens Village",106:"Ozone Park",107:"Fresh Meadows",108:"Sunnyside",109:"Flushing",110:"Corona/Elmhurst",111:"Bayside",112:"Forest Hills",113:"Jamaica",114:"Astoria/LIC",115:"Jackson Hts/Elmhurst",120:"St. George",121:"New Springville",122:"South Beach",123:"Tottenville"};
+// =============================================================================
+// STATE
+// =============================================================================
+var deckgl=null, MAP_DATA=null, GRID=null, PRECINCT_STATIONS=new Set();
+var viewMode="yearly", offMode="combined", mapStyle="hex";
+var excludeStations=true;
+var tIdx=0, tSteps=[], playing=false, playIv=null, playSpd=1200;
+var autoRot=false, rotRAF=null, rotBearing=-15, tChart=null;
+var IV={longitude:-73.97, latitude:40.71, zoom:10.6, pitch:52, bearing:-15};
 
-var deckgl=null,PMAP=null,viewMode="yearly",offMode="combined";
-var tIdx=0,tSteps=[],playing=false,playIv=null,playSpd=1200;
-var autoRot=false,rotRAF=null,rotBearing=-15,tChart=null;
-var IV={longitude:-73.97,latitude:40.695,zoom:10.4,pitch:52,bearing:-15};
+// =============================================================================
+// COLUMNAR PARSING — build a fast index
+// =============================================================================
+// Grid columns: [year, lng_bin, lat_bin, offense, is_precinct_station, n]
+// We index by year-string so we can quickly filter on view changes.
+var GRID_BY_YEAR = {};  // { 2006: [{lng,lat,offense,isStation,n}, ...], ... }
 
-function heatCol(r,mode){
-  var a=220;
-  if(mode==="felony")return[Math.round(180+75*r),Math.round(80-20*r),Math.round(50-20*r),a];
-  if(mode==="misd")return[Math.round(20+50*r),Math.round(40+80*r),Math.round(100+130*r),a];
-  var stops=[[0,[20,20,140]],[.18,[0,80,210]],[.38,[0,190,170]],[.56,[60,210,80]],[.72,[255,200,0]],[.86,[255,124,83]],[1,[231,70,109]]];
-  for(var i=1;i<stops.length;i++){
-    var t0=stops[i-1][0],c0=stops[i-1][1],t1=stops[i][0],c1=stops[i][1];
-    if(r<=t1){var t=(r-t0)/(t1-t0);return[Math.round(c0[0]+(c1[0]-c0[0])*t),Math.round(c0[1]+(c1[1]-c0[1])*t),Math.round(c0[2]+(c1[2]-c0[2])*t),a];}
-  }
-  return[231,70,109,a];
-}
-
-function getPct(pct,year,month){
-  var fel=0,misd=0;
-  ["Patrol","Subway","Housing"].forEach(function(lt){
-    try{
-      var fc=PMAP.complaints["FELONY ASSAULT"][lt]["pct_"+pct];
-      var mc=PMAP.complaints["ASSAULT 3 & RELATED OFFENSES"][lt]["pct_"+pct];
-      var fy=fc?fc[String(year)]:null,my=mc?mc[String(year)]:null;
-      function sm(m,mo){if(!m)return 0;if(mo!==undefined)return m[String(mo)]||0;return Object.values(m).reduce(function(s,v){return s+(v||0);},0);}
-      fel+=sm(fy,month);misd+=sm(my,month);
-    }catch(e){}
-  });
-  return{fel:fel,misd:misd,total:fel+misd};
-}
-
-function buildSteps(){
-  if(viewMode==="yearly"){var s=[];for(var y=2006;y<=2025;y++)s.push({label:String(y),year:y});return s;}
-  var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],s=[];
-  for(var y=2006;y<=2025;y++)for(var m=1;m<=12;m++)s.push({label:MO[m-1]+" "+y,year:y,month:m});
-  return s;
-}
-
-function getCW(step){
-  var fel=0,misd=0;
-  Object.keys(PCT_CENTROIDS).forEach(function(p){var d=getPct(+p,step.year,step.month);fel+=d.fel;misd+=d.misd;});
-  return{fel:fel,misd:misd,total:fel+misd};
-}
-
-function buildLayer(){
-  var step=tSteps[tIdx];if(!step)return null;
-  var pcts=Object.keys(PCT_CENTROIDS),mx=1,rd={};
-  pcts.forEach(function(p){
-    var d=getPct(+p,step.year,step.month);
-    var v=offMode==="felony"?d.fel:offMode==="misd"?d.misd:d.total;
-    rd[p]={fel:d.fel,misd:d.misd,total:d.total,val:v};
-    if(v>mx)mx=v;
-  });
-  var data=pcts.map(function(p){
-    var c=PCT_CENTROIDS[+p],r=rd[p];
-    return{pct:+p,lng:c[0],lat:c[1],fel:r.fel,misd:r.misd,total:r.total,val:r.val,ratio:r.val/mx};
-  });
-  var ranked=data.slice().sort(function(a,b){return b.val-a.val;}),rankMap={};
-  ranked.forEach(function(d,i){rankMap[d.pct]=i+1;});
-  var tot=data.length,capOff=offMode;
-  return new deck.ColumnLayer({
-    id:"spikes",data:data,diskResolution:6,radius:260,extruded:true,
-    getPosition:function(d){return[d.lng,d.lat];},
-    getElevation:function(d){return Math.pow(d.ratio,.72)*20000;},
-    getFillColor:function(d){return heatCol(d.ratio,capOff);},
-    getLineColor:[0,0,0,0],pickable:true,autoHighlight:true,highlightColor:[255,228,76,255],
-    updateTriggers:{getElevation:[tIdx,offMode],getFillColor:[tIdx,offMode]},
-    transitions:{getElevation:{duration:500,easing:function(t){return t<.5?2*t*t:-1+(4-2*t)*t;}},getFillColor:{duration:350}},
-    onHover:function(info){
-      var tt=document.getElementById("tooltip");
-      if(info.object){
-        var o=info.object,nm=PCT_NAMES[o.pct]||"",st=tSteps[tIdx],rk=rankMap[o.pct];
-        tt.innerHTML='<strong style="font-size:14px;font-weight:700;">Pct. '+o.pct+(nm?' &mdash; '+nm:'')+'</strong><br>'
-          +'<span style="color:rgba(255,255,255,.45);font-size:11px;">'+st.label+'</span>'
-          +'<div class="tt-rank">#'+rk+' of '+tot+' precincts</div>'
-          +'<div class="tt-row" style="margin-top:6px;"><div class="tt-dot" style="background:#ff7c53;"></div>Felony: <strong style="padding-left:10px;">'+o.fel.toLocaleString()+'</strong></div>'
-          +'<div class="tt-row"><div class="tt-dot" style="background:#394882;"></div>Misdemeanor: <strong style="padding-left:10px;">'+o.misd.toLocaleString()+'</strong></div>'
-          +'<div style="margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.08);">Total: <strong>'+o.total.toLocaleString()+'</strong></div>';
-        var ttW=tt.offsetWidth||200,ttH=tt.offsetHeight||110,W=window.innerWidth,H=window.innerHeight;
-        var lx=info.x+16,ty=info.y-ttH/2;
-        if(lx+ttW>W-8)lx=info.x-ttW-16;
-        if(ty<4)ty=4;if(ty+ttH>H-4)ty=H-ttH-4;
-        tt.style.left=lx+"px";tt.style.top=ty+"px";tt.classList.add("visible");
-      }else{tt.classList.remove("visible");}
-    }
-  });
-}
-
-function updateLayer(){if(!deckgl)return;deckgl.setProps({layers:[buildLayer()]});updateUI();updateChart();}
-
-function updateUI(){
-  var step=tSteps[tIdx];if(!step)return;
-  document.getElementById("year-num").textContent=step.label;
-  document.getElementById("year-sub").textContent=viewMode==="monthly"?"MONTHLY TOTAL":"ANNUAL TOTAL";
-  document.getElementById("year-num").classList.toggle("playing",playing);
-  document.getElementById("time-slider").value=String(tIdx);
-  document.getElementById("time-slider").classList.toggle("playing",playing);
-  document.getElementById("play-btn").innerHTML=playing?"&#9646;&#9646;":"&#9654;";
-  document.getElementById("play-btn").classList.toggle("playing",playing);
-  var c=getCW(step),shown=offMode==="felony"?c.fel:offMode==="misd"?c.misd:c.total;
-  if(offMode==="combined"){
-    document.getElementById("year-counts").innerHTML='<strong>'+c.total.toLocaleString()+'</strong> total &nbsp;&middot;&nbsp;<span style="color:#ff7c53;"> '+c.fel.toLocaleString()+' felony</span> &nbsp;&middot;&nbsp;<span style="color:#9b9fbc;"> '+c.misd.toLocaleString()+' misd.</span>';
-  }else{
-    document.getElementById("year-counts").innerHTML='<strong>'+shown.toLocaleString()+'</strong> '+(offMode==="felony"?"felony":"misdemeanor")+' assaults citywide';
+function parseGrid(gridTable) {
+  var cols = gridTable.cols;
+  var iYear = cols.indexOf("year");
+  var iLng  = cols.indexOf("lng_bin");
+  var iLat  = cols.indexOf("lat_bin");
+  var iOff  = cols.indexOf("offense");
+  var iSta  = cols.indexOf("is_precinct_station");
+  var iN    = cols.indexOf("n");
+  var rows  = gridTable.rows;
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var y = r[iYear];
+    if (!GRID_BY_YEAR[y]) GRID_BY_YEAR[y] = [];
+    GRID_BY_YEAR[y].push({
+      lng: r[iLng],
+      lat: r[iLat],
+      offense: r[iOff],
+      isStation: !!r[iSta],
+      n: r[iN]
+    });
   }
 }
 
-function setViewMode(mode,btn){
-  viewMode=mode;stopPlay();
-  document.querySelectorAll(".view-pills .pill-sm").forEach(function(b){b.classList.remove("active");});
-  btn.classList.add("active");
-  tSteps=buildSteps();tIdx=tSteps.length-1;
-  var sl=document.getElementById("time-slider");
-  sl.max=String(tSteps.length-1);sl.value=String(tIdx);
-  document.getElementById("slider-min").textContent=tSteps[0].label;
-  document.getElementById("slider-max").textContent=tSteps[tSteps.length-1].label;
-  updateLayer();
-}
-function setOffense(mode,btn){
-  offMode=mode;
-  document.querySelectorAll(".pill-group .pill-btn").forEach(function(b){b.classList.remove("active");});
-  btn.classList.add("active");updateLayer();
-}
-function setSpeed(ms,btn){
-  playSpd=ms;
-  document.querySelectorAll(".speed-btn").forEach(function(b){b.classList.remove("active");});
-  btn.classList.add("active");
-  if(playing){stopPlay();startPlay();}
-}
-function startPlay(){
-  playing=true;
-  playIv=setInterval(function(){
-    tIdx=(tIdx+1)%tSteps.length;updateLayer();
-    if(tIdx===tSteps.length-1)setTimeout(stopPlay,playSpd);
-  },playSpd);
-  updateUI();
-}
-function stopPlay(){playing=false;clearInterval(playIv);playIv=null;updateUI();}
-function togglePlay(){playing?stopPlay():startPlay();}
-
-function toggleRotate(){
-  autoRot=!autoRot;
-  document.getElementById("rotate-btn").classList.toggle("active",autoRot);
-  if(autoRot)startRotate();else stopRotate();
-}
-function startRotate(){
-  function frame(){
-    if(!autoRot)return;
-    rotBearing=(rotBearing+0.12)%360;
-    if(deckgl)deckgl.setProps({initialViewState:{longitude:IV.longitude,latitude:IV.latitude,zoom:IV.zoom,pitch:IV.pitch,bearing:rotBearing,transitionDuration:0}});
-    rotRAF=requestAnimationFrame(frame);
+// =============================================================================
+// DATA AGGREGATION
+// =============================================================================
+// For a given step (year), filter rows by offense and station flag,
+// then return a flat array of {lng, lat, value} for deck.gl.
+function getPointsForStep(step) {
+  var rows = GRID_BY_YEAR[step.year] || [];
+  var result = [];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (excludeStations && r.isStation) continue;
+    if (offMode === "felony" && r.offense !== "felony") continue;
+    if (offMode === "misd"   && r.offense !== "misd")   continue;
+    // Expand by count: HexagonLayer/HeatmapLayer want raw points,
+    // but we can use getWeight to avoid actual expansion
+    result.push({ lng: r.lng, lat: r.lat, value: r.n, offense: r.offense });
   }
-  rotRAF=requestAnimationFrame(frame);
-}
-function stopRotate(){autoRot=false;cancelAnimationFrame(rotRAF);document.getElementById("rotate-btn").classList.remove("active");}
-function resetView(){
-  stopRotate();rotBearing=-15;
-  if(deckgl)deckgl.setProps({initialViewState:{longitude:IV.longitude,latitude:IV.latitude,zoom:IV.zoom,pitch:IV.pitch,bearing:-15,transitionDuration:800}});
+  return result;
 }
 
-document.getElementById("time-slider").addEventListener("input",function(e){stopPlay();tIdx=parseInt(e.target.value);updateLayer();});
-window.addEventListener("scroll",function(){
-  var h=document.getElementById("scroll-hint");
-  if(h)h.style.opacity=window.scrollY>20?"0":"1";
-},{passive:true});
-
-function buildChartData(){
-  var years=[],fel=[],misd=[],total=[];
-  for(var y=2006;y<=2025;y++){
-    var f=0,m=0;
-    Object.keys(PCT_CENTROIDS).forEach(function(p){var d=getPct(+p,y,undefined);f+=d.fel;m+=d.misd;});
-    years.push(y);fel.push(f);misd.push(m);total.push(f+m);
+// Compute citywide totals for the year-display strip
+function getCitywideTotals(step) {
+  var rows = GRID_BY_YEAR[step.year] || [];
+  var fel = 0, misd = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (excludeStations && r.isStation) continue;
+    if (r.offense === "felony") fel += r.n;
+    else if (r.offense === "misd") misd += r.n;
   }
-  return{years:years,fel:fel,misd:misd,total:total};
+  return { fel: fel, misd: misd, total: fel + misd };
 }
 
-function initChart(){
-  var cd=buildChartData();
-  tChart=new Chart(document.getElementById("trend-chart"),{
-    type:"line",
-    data:{
-      labels:cd.years.map(String),
-      datasets:[
-        {label:"Combined total",data:cd.total,borderColor:"rgba(255,255,255,.5)",backgroundColor:"rgba(255,124,83,.07)",borderWidth:2,
-         pointBackgroundColor:cd.years.map(function(y){return y===2025?"#ff7c53":"rgba(255,255,255,.1)";}),
-         pointRadius:cd.years.map(function(y){return y===2025?8:2;}),pointHoverRadius:6,tension:.25,fill:true},
-        {label:"Felony",data:cd.fel,borderColor:"rgba(255,124,83,.55)",borderWidth:1.5,pointRadius:0,tension:.25,fill:false},
-        {label:"Misdemeanor",data:cd.misd,borderColor:"rgba(57,72,130,.55)",borderWidth:1.5,pointRadius:0,tension:.25,fill:false}
-      ]
+// =============================================================================
+// BUILD STEPS — yearly for now (monthly view would need different data)
+// =============================================================================
+function buildSteps() {
+  var years = Object.keys(GRID_BY_YEAR).map(Number).sort(function(a,b){return a-b;});
+  return years.map(function(y){ return { label: String(y), year: y }; });
+}
+
+// =============================================================================
+// COLOR SCALES (deck.gl-friendly)
+// =============================================================================
+// Returns array of [r,g,b] for color range
+function colorRange(mode) {
+  if (mode === "felony") {
+    return [
+      [70, 30, 20],    [120, 50, 30],    [180, 70, 40],
+      [220, 90, 50],   [240, 110, 70],   [255, 124, 83]
+    ];
+  }
+  if (mode === "misd") {
+    return [
+      [20, 25, 60],    [35, 45, 100],    [50, 70, 150],
+      [70, 100, 200],  [120, 150, 230],  [180, 200, 240]
+    ];
+  }
+  // Combined: full heat scale (blue to red)
+  return [
+    [20, 20, 140],   [0, 80, 210],     [0, 190, 170],
+    [60, 210, 80],   [255, 200, 0],    [255, 124, 83],
+    [231, 70, 109]
+  ];
+}
+
+// =============================================================================
+// BUILD LAYER
+// =============================================================================
+function buildLayer() {
+  var step = tSteps[tIdx];
+  if (!step) return null;
+  var pts = getPointsForStep(step);
+
+  if (mapStyle === "heat") {
+    return new deck.HeatmapLayer({
+      id: "heat",
+      data: pts,
+      getPosition: function(d) { return [d.lng, d.lat]; },
+      getWeight: function(d) { return d.value; },
+      radiusPixels: 30,
+      intensity: 1.2,
+      threshold: 0.05,
+      colorRange: colorRange(offMode),
+      updateTriggers: {
+        getWeight: [tIdx, offMode, excludeStations]
+      }
+    });
+  }
+
+  // 3D Hex
+  return new deck.HexagonLayer({
+    id: "hex",
+    data: pts,
+    getPosition: function(d) { return [d.lng, d.lat]; },
+    getColorWeight: function(d) { return d.value; },
+    getElevationWeight: function(d) { return d.value; },
+    radius: 200,
+    elevationScale: 18,
+    extruded: true,
+    pickable: true,
+    coverage: 0.92,
+    colorRange: colorRange(offMode),
+    elevationRange: [0, 3500],
+    upperPercentile: 100,
+    material: { ambient: 0.6, diffuse: 0.7, shininess: 32 },
+    transitions: {
+      elevationScale: { duration: 400 }
     },
-    options:{
-      responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
-      scales:{
-        x:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"rgba(255,255,255,.35)",font:{size:11}}},
-        y:{beginAtZero:false,grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"rgba(255,255,255,.35)",font:{size:11},callback:function(v){return v>=1000?(v/1000).toFixed(0)+"k":v;}}}
-      },
-      plugins:{
-        legend:{display:true,labels:{color:"rgba(255,255,255,.4)",font:{size:10},boxWidth:12,padding:16}},
-        tooltip:{backgroundColor:"rgba(5,5,7,.95)",borderColor:"rgba(255,124,83,.35)",borderWidth:1,titleColor:"#fff",bodyColor:"rgba(255,255,255,.65)",callbacks:{label:function(ctx){return ctx.dataset.label+": "+ctx.parsed.y.toLocaleString();}}}
+    updateTriggers: {
+      getColorWeight: [tIdx, offMode, excludeStations],
+      getElevationWeight: [tIdx, offMode, excludeStations]
+    },
+    onHover: function(info) {
+      var tt = document.getElementById("tooltip");
+      if (info.object) {
+        var count = info.object.elevationValue || info.object.colorValue || 0;
+        var step = tSteps[tIdx];
+        tt.innerHTML =
+          '<strong style="font-size:14px;font-weight:700;">'
+          + Math.round(count).toLocaleString() + ' assaults</strong><br>'
+          + '<span style="color:rgba(255,255,255,.5);font-size:11px;">'
+          + step.label + ' &#183; '
+          + (offMode==="felony"?"Felony":offMode==="misd"?"Misdemeanor":"Combined")
+          + '</span><br>'
+          + '<span style="color:rgba(255,255,255,.4);font-size:10px;">'
+          + 'in this 200m hexagon</span>';
+        var ttW = tt.offsetWidth || 200, ttH = tt.offsetHeight || 70;
+        var W = window.innerWidth, H = window.innerHeight;
+        var lx = info.x + 16, ty = info.y - ttH/2;
+        if (lx + ttW > W - 8) lx = info.x - ttW - 16;
+        if (ty < 4) ty = 4;
+        if (ty + ttH > H - 4) ty = H - ttH - 4;
+        tt.style.left = lx + "px";
+        tt.style.top = ty + "px";
+        tt.classList.add("visible");
+      } else {
+        tt.classList.remove("visible");
       }
     }
   });
 }
 
-function updateChart(){
-  if(!tChart)return;
-  var step=tSteps[tIdx];if(!step)return;
-  var cy=step.year;
-  tChart.data.datasets[0].pointBackgroundColor=tChart.data.labels.map(function(y){return +y===cy?"#ff7c53":"rgba(255,255,255,.1)";});
-  tChart.data.datasets[0].pointRadius=tChart.data.labels.map(function(y){return +y===cy?8:2;});
+// =============================================================================
+// UPDATE
+// =============================================================================
+function updateLayer() {
+  if (!deckgl) return;
+  deckgl.setProps({ layers: [buildLayer()] });
+  updateUI();
+  updateChart();
+}
+
+function updateUI() {
+  var step = tSteps[tIdx];
+  if (!step) return;
+  document.getElementById("year-num").textContent = step.label;
+  document.getElementById("year-sub").textContent = "ANNUAL TOTAL";
+  document.getElementById("year-num").classList.toggle("playing", playing);
+  document.getElementById("time-slider").value = String(tIdx);
+  document.getElementById("time-slider").classList.toggle("playing", playing);
+  document.getElementById("play-btn").innerHTML = playing ? "&#9646;&#9646;" : "&#9654;";
+  document.getElementById("play-btn").classList.toggle("playing", playing);
+  var c = getCitywideTotals(step);
+  var shown = offMode==="felony" ? c.fel : offMode==="misd" ? c.misd : c.total;
+  if (offMode === "combined") {
+    document.getElementById("year-counts").innerHTML =
+      '<strong>' + c.total.toLocaleString() + '</strong> total &nbsp;&middot;&nbsp;'
+      + '<span style="color:#ff7c53;"> ' + c.fel.toLocaleString() + ' felony</span> &nbsp;&middot;&nbsp;'
+      + '<span style="color:#9b9fbc;"> ' + c.misd.toLocaleString() + ' misd.</span>';
+  } else {
+    document.getElementById("year-counts").innerHTML =
+      '<strong>' + shown.toLocaleString() + '</strong> '
+      + (offMode==="felony" ? "felony" : "misdemeanor") + ' assaults citywide';
+  }
+}
+
+// =============================================================================
+// CONTROLS
+// =============================================================================
+function setViewMode(mode, btn) {
+  // Currently we only support yearly. Monthly would need different data.
+  if (mode === "monthly") {
+    alert("Monthly view requires additional data. Yearly view only for now.");
+    return;
+  }
+  viewMode = mode;
+  stopPlay();
+  document.querySelectorAll(".view-pills .pill-sm").forEach(function(b){b.classList.remove("active");});
+  btn.classList.add("active");
+}
+
+function setMapStyle(style, btn) {
+  mapStyle = style;
+  document.querySelectorAll(".top-right .tr-group:nth-child(2) .pill-sm").forEach(function(b){b.classList.remove("active");});
+  btn.classList.add("active");
+  updateLayer();
+}
+
+function toggleStations(checked) {
+  excludeStations = checked;
+  updateLayer();
+}
+
+function setOffense(mode, btn) {
+  offMode = mode;
+  document.querySelectorAll(".pill-group .pill-btn").forEach(function(b){b.classList.remove("active");});
+  btn.classList.add("active");
+  updateLayer();
+}
+
+function setSpeed(ms, btn) {
+  playSpd = ms;
+  document.querySelectorAll(".speed-btn").forEach(function(b){b.classList.remove("active");});
+  btn.classList.add("active");
+  if (playing) { stopPlay(); startPlay(); }
+}
+
+function startPlay() {
+  playing = true;
+  playIv = setInterval(function() {
+    tIdx = (tIdx + 1) % tSteps.length;
+    updateLayer();
+    if (tIdx === tSteps.length - 1) setTimeout(stopPlay, playSpd);
+  }, playSpd);
+  updateUI();
+}
+function stopPlay() { playing = false; clearInterval(playIv); playIv = null; updateUI(); }
+function togglePlay() { playing ? stopPlay() : startPlay(); }
+
+function toggleRotate() {
+  autoRot = !autoRot;
+  document.getElementById("rotate-btn").classList.toggle("active", autoRot);
+  if (autoRot) startRotate(); else stopRotate();
+}
+function startRotate() {
+  function frame() {
+    if (!autoRot) return;
+    rotBearing = (rotBearing + 0.12) % 360;
+    if (deckgl) deckgl.setProps({
+      initialViewState: {
+        longitude: IV.longitude, latitude: IV.latitude,
+        zoom: IV.zoom, pitch: IV.pitch,
+        bearing: rotBearing, transitionDuration: 0
+      }
+    });
+    rotRAF = requestAnimationFrame(frame);
+  }
+  rotRAF = requestAnimationFrame(frame);
+}
+function stopRotate() {
+  autoRot = false;
+  cancelAnimationFrame(rotRAF);
+  document.getElementById("rotate-btn").classList.remove("active");
+}
+function resetView() {
+  stopRotate();
+  rotBearing = -15;
+  if (deckgl) deckgl.setProps({
+    initialViewState: {
+      longitude: IV.longitude, latitude: IV.latitude,
+      zoom: IV.zoom, pitch: IV.pitch,
+      bearing: -15, transitionDuration: 800
+    }
+  });
+}
+
+document.getElementById("time-slider").addEventListener("input", function(e) {
+  stopPlay();
+  tIdx = parseInt(e.target.value);
+  updateLayer();
+});
+
+window.addEventListener("scroll", function() {
+  var h = document.getElementById("scroll-hint");
+  if (h) h.style.opacity = window.scrollY > 20 ? "0" : "1";
+}, { passive: true });
+
+// =============================================================================
+// TREND CHART
+// =============================================================================
+function buildChartData() {
+  var years = Object.keys(GRID_BY_YEAR).map(Number).sort(function(a,b){return a-b;});
+  var fel = [], misd = [], total = [];
+  for (var i = 0; i < years.length; i++) {
+    var c = getCitywideTotals({ year: years[i] });
+    fel.push(c.fel); misd.push(c.misd); total.push(c.total);
+  }
+  return { years: years, fel: fel, misd: misd, total: total };
+}
+
+function initChart() {
+  var cd = buildChartData();
+  var maxYear = Math.max.apply(null, cd.years);
+  tChart = new Chart(document.getElementById("trend-chart"), {
+    type: "line",
+    data: {
+      labels: cd.years.map(String),
+      datasets: [
+        {
+          label: "Combined total", data: cd.total,
+          borderColor: "rgba(255,255,255,.5)",
+          backgroundColor: "rgba(255,124,83,.07)",
+          borderWidth: 2,
+          pointBackgroundColor: cd.years.map(function(y){return y===maxYear?"#ff7c53":"rgba(255,255,255,.1)";}),
+          pointRadius: cd.years.map(function(y){return y===maxYear?8:2;}),
+          pointHoverRadius: 6, tension: .25, fill: true
+        },
+        {
+          label: "Felony", data: cd.fel,
+          borderColor: "rgba(255,124,83,.55)",
+          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false
+        },
+        {
+          label: "Misdemeanor", data: cd.misd,
+          borderColor: "rgba(57,72,130,.55)",
+          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "rgba(255,255,255,.35)", font: { size: 11 } } },
+        y: { beginAtZero: false, grid: { color: "rgba(255,255,255,.04)" },
+             ticks: { color: "rgba(255,255,255,.35)", font: { size: 11 },
+                      callback: function(v) { return v >= 1000 ? (v/1000).toFixed(0)+"k" : v; } } }
+      },
+      plugins: {
+        legend: { display: true, labels: { color: "rgba(255,255,255,.4)", font: { size: 10 }, boxWidth: 12, padding: 16 } },
+        tooltip: {
+          backgroundColor: "rgba(5,5,7,.95)", borderColor: "rgba(255,124,83,.35)", borderWidth: 1,
+          titleColor: "#fff", bodyColor: "rgba(255,255,255,.65)",
+          callbacks: { label: function(ctx) { return ctx.dataset.label + ": " + ctx.parsed.y.toLocaleString(); } }
+        }
+      }
+    }
+  });
+}
+
+function updateChart() {
+  if (!tChart) return;
+  var step = tSteps[tIdx];
+  if (!step) return;
+  var cy = step.year;
+  // Recompute totals (since station exclusion may have changed)
+  var cd = buildChartData();
+  tChart.data.datasets[0].data = cd.total;
+  tChart.data.datasets[1].data = cd.fel;
+  tChart.data.datasets[2].data = cd.misd;
+  tChart.data.datasets[0].pointBackgroundColor = tChart.data.labels.map(function(y){return +y===cy?"#ff7c53":"rgba(255,255,255,.1)";});
+  tChart.data.datasets[0].pointRadius = tChart.data.labels.map(function(y){return +y===cy?8:2;});
   tChart.update("none");
 }
 
-function initMap(){
-  deckgl=new deck.DeckGL({
-    container:"map",map:maplibregl,
-    mapStyle:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",
-    initialViewState:IV,controller:{dragRotate:true,touchRotate:true},layers:[]
+// =============================================================================
+// INIT MAP
+// =============================================================================
+function initMap() {
+  deckgl = new deck.DeckGL({
+    container: "map",
+    map: maplibregl,
+    mapStyle: "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",
+    initialViewState: IV,
+    controller: { dragRotate: true, touchRotate: true },
+    layers: []
   });
-  tSteps=buildSteps();tIdx=tSteps.length-1;
-  var sl=document.getElementById("time-slider");
-  sl.max=String(tSteps.length-1);sl.value=String(tIdx);
-  document.getElementById("slider-min").textContent=tSteps[0].label;
-  document.getElementById("slider-max").textContent=tSteps[tSteps.length-1].label;
-  setTimeout(function(){updateLayer();document.getElementById("loading").style.display="none";initChart();},700);
+  tSteps = buildSteps();
+  tIdx = tSteps.length - 1;
+  var sl = document.getElementById("time-slider");
+  sl.max = String(tSteps.length - 1);
+  sl.value = String(tIdx);
+  document.getElementById("slider-min").textContent = tSteps[0].label;
+  document.getElementById("slider-max").textContent = tSteps[tSteps.length - 1].label;
+  setTimeout(function() {
+    updateLayer();
+    document.getElementById("loading").style.display = "none";
+    initChart();
+  }, 700);
 }
 
-async function boot(){
-  var bar=document.getElementById("ld-bar"),sub=document.getElementById("ld-sub");
-  try{
-    sub.textContent="Fetching assault data...";bar.style.width="25%";
-    var resp=await fetch("https://vitalcity2025.github.io/Assault_explorer/assault_data.json");
-    if(!resp.ok)throw new Error("HTTP "+resp.status);
-    sub.textContent="Parsing data...";bar.style.width="65%";
-    var raw=await resp.json();
-    PMAP=raw.precinct_map;
-    sub.textContent="Building map...";bar.style.width="90%";
-    setTimeout(function(){bar.style.width="100%";setTimeout(initMap,200);},200);
-  }catch(e){
-    console.error("Boot failed:",e);
-    document.getElementById("loading").style.display="none";
-    document.getElementById("err").style.display="flex";
+// =============================================================================
+// BOOT
+// =============================================================================
+async function boot() {
+  var bar = document.getElementById("ld-bar");
+  var sub = document.getElementById("ld-sub");
+  try {
+    sub.textContent = "Fetching assault map data...";
+    bar.style.width = "20%";
+    var resp = await fetch("assault_map_data.json");
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    sub.textContent = "Parsing data...";
+    bar.style.width = "55%";
+    var raw = await resp.json();
+    MAP_DATA = raw;
+    sub.textContent = "Building index...";
+    bar.style.width = "80%";
+    parseGrid(raw.grid);
+    sub.textContent = "Building map...";
+    bar.style.width = "95%";
+    setTimeout(function() {
+      bar.style.width = "100%";
+      setTimeout(initMap, 200);
+    }, 200);
+  } catch(e) {
+    console.error("Boot failed:", e);
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("err").style.display = "flex";
   }
 }
 boot();
