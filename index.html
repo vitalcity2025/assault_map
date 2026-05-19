@@ -767,15 +767,31 @@ function updateLegend(maxVal, mode) {
         '<div class="legend-swatch" style="background:' + rgbStr(bands[b].color) + ';"></div>' +
         '<span>' + bands[b].label + '</span></div>';
     }
+  } else if (mapStyle === "heat") {
+    // Heatmap mode — show density gradient (low to high), not specific counts.
+    // Heatmaps aggregate by pixel area so specific count thresholds wouldn't
+    // be meaningful. Use the combined heat scale as a continuous gradient.
+    title = "Assault density";
+    subtitle = "Color intensity reflects how concentrated assaults are";
+    var heatRange = colorRange("combined");
+    var heatStops = heatRange.length;
+    for (var hi = heatStops - 1; hi >= 0; hi--) {
+      var heatLabel = "";
+      if (hi === heatStops - 1) heatLabel = "High";
+      else if (hi === 0) heatLabel = "Low";
+      legendHTML += '<div class="legend-stop">' +
+        '<div class="legend-swatch" style="background:' + rgbStr(heatRange[hi]) + ';"></div>' +
+        '<span>' + heatLabel + '</span></div>';
+    }
   } else {
-    // Totals mode — color scale with numeric thresholds
+    // 3D Hex / totals mode — color scale with numeric thresholds
     var range = colorRange(mode);
     var stops = range.length;
     for (var i = stops - 1; i >= 0; i--) {
       var lo = Math.round(maxVal * (i / stops));
-      var hi = Math.round(maxVal * ((i + 1) / stops));
-      var label = lo.toLocaleString() + "-" + hi.toLocaleString();
-      if (i === stops - 1) label = hi.toLocaleString() + "+";
+      var hi2 = Math.round(maxVal * ((i + 1) / stops));
+      var label = lo.toLocaleString() + "-" + hi2.toLocaleString();
+      if (i === stops - 1) label = hi2.toLocaleString() + "+";
       legendHTML += '<div class="legend-stop">' +
         '<div class="legend-swatch" style="background:' + rgbStr(range[i]) + ';"></div>' +
         '<span>' + label + '</span></div>';
@@ -888,13 +904,9 @@ function getGlobalMax(offenseMode, isAnnual) {
     var binAgg = {};
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
-      // Respect default station-exclusion in the universal max calculation,
-      // since users default to excluding them. This keeps spike heights
-      // intuitive on first load.
       if (r.isStation) continue;
       if (offenseMode === "felony" && r.offense !== "felony") continue;
       if (offenseMode === "misd"   && r.offense !== "misd")   continue;
-      // Approximate hex binning by rounding to ~330m (about 0.003° at NYC lat).
       var bLng = Math.round(r.lng * 333) / 333;
       var bLat = Math.round(r.lat * 333) / 333;
       var bKey = bLng + "," + bLat;
@@ -906,6 +918,40 @@ function getGlobalMax(offenseMode, isAnnual) {
   }
   GLOBAL_MAX_CACHE[cacheKey] = globalMax;
   return globalMax;
+}
+
+// Separate cache for heatmap-style max. HeatmapLayer aggregates by a pixel
+// radius rather than discrete bins, so it needs a much smaller domain than
+// the hex layer. We compute the max single-cell weight across all years
+// (without further binning), which approximates the densest "spot" the
+// heatmap would render.
+var HEATMAP_MAX_CACHE = {};
+function getHeatmapMax(offenseMode, isAnnual) {
+  var cacheKey = offenseMode + "-" + (isAnnual ? "a" : "q");
+  if (HEATMAP_MAX_CACHE[cacheKey] !== undefined) return HEATMAP_MAX_CACHE[cacheKey];
+
+  var stepKeys = isAnnual ? Object.keys(GRID_BY_YEAR) : Object.keys(GRID_BY_STEP);
+  var heatMax = 1;
+  for (var s = 0; s < stepKeys.length; s++) {
+    var key = stepKeys[s];
+    var rows = isAnnual ? (GRID_BY_YEAR[key] || []) : (GRID_BY_STEP[key] || []);
+    // For heatmap, we sum to the source 110m cells (no further binning).
+    // The heatmap then smooths these into a density surface.
+    var cellAgg = {};
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r.isStation) continue;
+      if (offenseMode === "felony" && r.offense !== "felony") continue;
+      if (offenseMode === "misd"   && r.offense !== "misd")   continue;
+      var cKey = r.lng + "," + r.lat;
+      cellAgg[cKey] = (cellAgg[cKey] || 0) + r.n;
+    }
+    for (var k in cellAgg) {
+      if (cellAgg[k] > heatMax) heatMax = cellAgg[k];
+    }
+  }
+  HEATMAP_MAX_CACHE[cacheKey] = heatMax;
+  return heatMax;
 }
 
 function buildNYCUniverse(radiusMeters) {
@@ -1007,7 +1053,7 @@ function buildLayers() {
   var layers = [];
 
   if (mapStyle === "heat" && !d.isCompare) {
-    var heatGlobalMax = getGlobalMax(offMode, granularity === "annual");
+    var heatGlobalMax = getHeatmapMax(offMode, granularity === "annual");
     layers.push(new deck.HeatmapLayer({
       id: "heat",
       data: pts,
@@ -1019,8 +1065,8 @@ function buildLayers() {
       // Always use the full combined heat scale (blue → cyan → green → yellow → orange → red)
       // regardless of offense type. The colors carry density, not category.
       colorRange: colorRange("combined"),
-      // Pin colorDomain to the global max so a "red" patch in 2008 means the
-      // same density as a "red" patch in 2026.
+      // Pin colorDomain to the heatmap-specific max so density patterns stay
+      // visually consistent across time.
       colorDomain: [0, heatGlobalMax],
       updateTriggers: { getWeight: [tIdx, offMode, excludeStations, minThreshold] }
     }));
