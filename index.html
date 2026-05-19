@@ -93,6 +93,8 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 .nav-arrow:hover{color:var(--orange);border-color:var(--orange);background:rgba(255,124,83,.08);}
 .nav-arrow:disabled{opacity:.2;cursor:not-allowed;}
 .year-dropdown-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.jump-to-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;}
+.jump-to-label{font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);}
 .dropdown-label{font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);}
 .time-dropdown{
   background:rgba(5,5,7,.7);border:1px solid rgba(255,255,255,.2);color:var(--white);
@@ -258,8 +260,8 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     <div class="tr-group">
       <div class="tr-label">Time granularity</div>
       <div class="view-pills">
-        <button class="pill-sm active" id="gran-quarterly" onclick="setGranularity('quarterly',this)">Quarterly</button>
-        <button class="pill-sm" id="gran-annual" onclick="setGranularity('annual',this)">Annual</button>
+        <button class="pill-sm" id="gran-quarterly" onclick="setGranularity('quarterly',this)">Quarterly</button>
+        <button class="pill-sm active" id="gran-annual" onclick="setGranularity('annual',this)">Annual</button>
       </div>
     </div>
     <div class="tr-group">
@@ -308,6 +310,10 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
       </div>
       <div class="year-sub" id="year-sub">QUARTERLY TOTAL</div>
       <div class="year-counts" id="year-counts"></div>
+      <div class="jump-to-row">
+        <span class="jump-to-label">Jump to:</span>
+        <select id="time-dropdown" class="time-dropdown" onchange="jumpToStep(this.value)"></select>
+      </div>
     </div>
     <div class="slider-row">
       <span class="slider-label" id="slider-min">2006 Q1</span>
@@ -436,7 +442,7 @@ function parseGrid(gridTable) {
 // =============================================================================
 // BUILD TIME STEPS — quarterly or annual depending on granularity
 // =============================================================================
-var granularity = "quarterly"; // "quarterly" or "annual"
+var granularity = "annual"; // "quarterly" or "annual"
 
 function buildSteps() {
   if (granularity === "annual") {
@@ -1137,6 +1143,8 @@ function updateUI() {
   // Sync the slider and nav arrows
   document.getElementById("time-slider").value = String(tIdx);
   document.getElementById("time-slider").classList.toggle("playing", playing);
+  var dd = document.getElementById("time-dropdown");
+  if (dd && dd.options.length > 0) dd.value = String(tIdx);
   var prevBtn = document.getElementById("prev-btn");
   var nextBtn = document.getElementById("next-btn");
   if (prevBtn) prevBtn.disabled = (tIdx === 0);
@@ -1206,12 +1214,16 @@ function setMode(mode, btn) {
   document.querySelectorAll("#mode-totals,#mode-compare").forEach(function(b){b.classList.remove("active");});
   btn.classList.add("active");
   var offenseGroup = document.getElementById("offense-group");
+  var filterPanel = document.getElementById("filter-panel");
   if (mode === "compare") {
     offMode = "compare";
     // Grey out the offense type group since it doesn't apply
     if (offenseGroup) offenseGroup.classList.add("disabled");
+    // Hide the filter hexagons panel — it's not applicable in YoY mode
+    if (filterPanel) filterPanel.style.display = "none";
   } else {
     if (offenseGroup) offenseGroup.classList.remove("disabled");
+    if (filterPanel) filterPanel.style.display = "";
     // Restore offMode based on which offense pill is currently active
     var activePill = document.querySelector("#offense-group .pill-sm.active");
     if (activePill && activePill.id === "off-felony") offMode = "felony";
@@ -1534,9 +1546,21 @@ function rebuildSteps(preserveTime) {
   populateTimeDropdown();
 }
 
-// Dropdown was removed in the redesign; this function is now a no-op
-// kept so rebuildSteps doesn't need to be touched.
-function populateTimeDropdown() {}
+// Populate the year/period dropdown for direct navigation
+function populateTimeDropdown() {
+  var sel = document.getElementById("time-dropdown");
+  if (!sel) return;
+  // Build options in reverse chronological order so most recent is at the top
+  var opts = "";
+  for (var i = tSteps.length - 1; i >= 0; i--) {
+    var s = tSteps[i];
+    var label = s.label;
+    if (s.annual && s.isPartial) label = s.year + " YTD";
+    opts += '<option value="' + i + '">' + label + '</option>';
+  }
+  sel.innerHTML = opts;
+  sel.value = String(tIdx);
+}
 
 async function boot() {
   var bar = document.getElementById("ld-bar");
