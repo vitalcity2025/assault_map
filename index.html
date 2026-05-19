@@ -50,7 +50,7 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 /* Right side panel for top/bottom precincts */
 .side-panel{position:absolute;top:280px;right:20px;z-index:10;width:340px;
   background:rgba(5,5,7,.92);border-left:2px solid var(--orange);
-  padding:14px 16px;max-height:calc(100vh - 480px);overflow-y:auto;
+  padding:14px 16px;
   pointer-events:auto;}
 .sp-tabs{display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,.1);}
 .sp-tab{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
@@ -223,8 +223,8 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
   <div class="side-panel" id="side-panel">
     <button class="sp-close" onclick="toggleSidePanel(false)">&times;</button>
     <div class="sp-tabs">
-      <button class="sp-tab active" onclick="setRankView('top',this)">Top 10 highest</button>
-      <button class="sp-tab" onclick="setRankView('bottom',this)">Bottom 10 lowest</button>
+      <button class="sp-tab active" onclick="setRankView('top',this)">Top 5 highest</button>
+      <button class="sp-tab" onclick="setRankView('bottom',this)">Bottom 5 lowest</button>
     </div>
     <div class="sp-list" id="sp-list"></div>
   </div>
@@ -530,7 +530,7 @@ function updateRankings(step) {
     ranks.sort(function(a,b){
       return rankView === "top" ? (b.delta || 0) - (a.delta || 0) : (a.delta || 0) - (b.delta || 0);
     });
-    var slice = ranks.slice(0, 10);
+    var slice = ranks.slice(0, 5);
     listEl.innerHTML = slice.map(function(r, i) {
       var name = PCT_NAMES[r.precinct] || "";
       var delta = r.delta || 0;
@@ -554,7 +554,7 @@ function updateRankings(step) {
     });
     // For "bottom" mode, filter out zero-count precincts (those with no data)
     if (rankView === "bottom") ranks = ranks.filter(function(r){return (r.count || 0) > 0;});
-    var slice2 = ranks.slice(0, 10);
+    var slice2 = ranks.slice(0, 5);
     listEl.innerHTML = slice2.map(function(r, i) {
       var name = PCT_NAMES[r.precinct] || "";
       var cnt = r.count || 0;
@@ -565,8 +565,8 @@ function updateRankings(step) {
         '<span class="sp-count">' + cnt.toLocaleString() + '</span>' +
       '</div>';
     }).join("");
-    document.querySelector(".sp-tabs .sp-tab:nth-child(1)").innerHTML = "Top 10 highest";
-    document.querySelector(".sp-tabs .sp-tab:nth-child(2)").innerHTML = "Bottom 10 lowest";
+    document.querySelector(".sp-tabs .sp-tab:nth-child(1)").innerHTML = "Top 5 highest";
+    document.querySelector(".sp-tabs .sp-tab:nth-child(2)").innerHTML = "Bottom 5 lowest";
   }
 }
 
@@ -587,13 +587,14 @@ function colorRange(mode) {
     ];
   }
   if (mode === "compare") {
-    // Diverging: deep green (improving) → near-white (no change) → deep red (worsening)
-    // Made middle stops more saturated so changes register visually instead of all looking pale.
+    // Diverging: deep green (improving) → light gray (no change) → deep red (worsening)
+    // The middle stop is a distinct light gray (not white) so "no change"
+    // hexes are visibly different from gaps where there is no data at all.
     return [
       [30, 110, 50],     // deep green
       [110, 180, 130],   // medium green
       [180, 220, 195],   // light green
-      [240, 240, 240],   // near-white (no change)
+      [185, 185, 185],   // light gray — visibly "no change"
       [240, 200, 195],   // light pink
       [225, 130, 110],   // medium red
       [195, 40, 40]      // deep red
@@ -727,7 +728,9 @@ function buildLayers() {
         radius: 400,
         extruded: false,
         pickable: true,
-        coverage: 0.92,
+        coverage: 1.0,
+        lowerPercentile: 0,
+        upperPercentile: 100,
         colorRange: colorRange("compare"),
         colorDomain: [-compressedMax, compressedMax],
         updateTriggers: {
@@ -808,9 +811,10 @@ function handleHover(info, step, mode) {
         totalDelta = info.object.colorValue;
       }
       var d = totalDelta;
-      var sign = d > 0 ? "+" : "";
-      var color = d > 0 ? "#e7466d" : d < 0 ? "#3a8a3e" : "#999";
-      text = '<strong style="font-size:14px;font-weight:700;color:' + color + ';">' + sign + d.toLocaleString() + ' assaults</strong><br>'
+      var sign = d > 0 ? "+" : d < 0 ? "" : "";
+      var color = d > 0 ? "#e7466d" : d < 0 ? "#3a8a3e" : "#bbb";
+      var headerText = d === 0 ? "No change" : sign + d.toLocaleString() + " assaults";
+      text = '<strong style="font-size:14px;font-weight:700;color:' + color + ';">' + headerText + '</strong><br>'
         + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + (step.year-1) + ' Q' + step.quarter + ' YTD</span><br>'
         + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + totalCur.toLocaleString() + ' this period &middot; ' + totalPrior.toLocaleString() + ' prior period</span>';
     } else {
