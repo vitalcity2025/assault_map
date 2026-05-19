@@ -118,6 +118,20 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 .speed-btn{font-family:var(--fp);font-weight:700;font-size:9px;border:1px solid rgba(255,255,255,.12);background:none;color:rgba(255,255,255,.35);padding:5px 8px;cursor:pointer;transition:all .1s;}
 .speed-btn.active{background:rgba(255,255,255,.08);color:var(--white);border-color:rgba(255,255,255,.35);}
 
+/* Filter panel — separate from time slider for clarity */
+.filter-panel{position:absolute;left:20px;bottom:340px;z-index:10;
+  background:rgba(5,5,7,.92);padding:14px 16px;
+  border-left:2px solid var(--yellow);min-width:240px;}
+.fp-title{font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow);margin-bottom:10px;}
+.fp-row{display:flex;align-items:baseline;gap:6px;margin-bottom:8px;}
+.fp-label{font-weight:300;font-size:11px;color:rgba(255,255,255,.55);}
+.fp-value{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:22px;color:var(--yellow);font-variant-numeric:tabular-nums;}
+.fp-suffix{font-weight:300;font-size:11px;color:rgba(255,255,255,.4);}
+.fp-hint{font-weight:300;font-size:10px;color:rgba(255,255,255,.3);margin-top:6px;font-style:italic;}
+.filter-panel input[type=range]{width:100%;}
+.filter-panel input[type=range]::-webkit-slider-thumb{background:var(--yellow);box-shadow:0 0 8px rgba(221,228,76,.4);}
+.filter-panel input[type=range]:disabled{opacity:.3;}
+
 /* Improved legend with actual counts */
 .legend{position:absolute;left:20px;bottom:180px;z-index:10;background:rgba(5,5,7,.85);padding:10px 12px;border-left:2px solid rgba(255,255,255,.08);min-width:160px;}
 .legend-title{font-weight:700;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;}
@@ -212,6 +226,17 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     <div class="sp-list" id="sp-list"></div>
   </div>
 
+  <div class="filter-panel" id="filter-panel">
+    <div class="fp-title">Filter hexagons</div>
+    <div class="fp-row">
+      <span class="fp-label">Hide hexagons below</span>
+      <span class="fp-value" id="threshold-val">0</span>
+      <span class="fp-suffix">assaults</span>
+    </div>
+    <input type="range" id="threshold-slider" min="0" max="1000" value="0" step="1">
+    <div class="fp-hint" id="fp-hint">Drag right to focus on hotspots</div>
+  </div>
+
   <div class="legend" id="legend">
     <div class="legend-title">Assault count</div>
     <div class="legend-stops" id="legend-stops"></div>
@@ -229,11 +254,6 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
       <span class="slider-label" id="slider-min">2006 Q1</span>
       <input type="range" id="time-slider" min="0" max="0" value="0" step="1">
       <span class="slider-label" id="slider-max">2026 Q1</span>
-    </div>
-    <div class="thresh-row">
-      <span class="slider-label">Min count</span>
-      <input type="range" id="threshold-slider" min="0" max="1000" value="0" step="1">
-      <span id="threshold-val">0+</span>
     </div>
     <div class="bottom-row">
       <button class="play-btn" id="play-btn" onclick="togglePlay()">&#9654;</button>
@@ -334,7 +354,8 @@ function parseGrid(gridTable) {
     var rec = {
       lng: r[iLng], lat: r[iLat],
       offense: r[iOff], isStation: !!r[iSta],
-      precinct: r[iPct], n: r[iN]
+      precinct: r[iPct], n: r[iN],
+      quarter: q, year: y
     };
     if (!GRID_BY_STEP[stepKey]) GRID_BY_STEP[stepKey] = [];
     GRID_BY_STEP[stepKey].push(rec);
@@ -744,8 +765,8 @@ function handleHover(info, step, mode) {
       var sign = d > 0 ? "+" : "";
       var color = d > 0 ? "#e7466d" : d < 0 ? "#3a8a3e" : "#999";
       text = '<strong style="font-size:14px;font-weight:700;color:' + color + ';">' + sign + d.toLocaleString() + ' assaults</strong><br>'
-        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + (step.year-1) + ' YTD</span><br>'
-        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + (o.cur || 0).toLocaleString() + ' this year &middot; ' + (o.prior || 0).toLocaleString() + ' prior year</span>';
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + (step.year-1) + ' Q' + step.quarter + ' YTD</span><br>'
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + (o.cur || 0).toLocaleString() + ' this period &middot; ' + (o.prior || 0).toLocaleString() + ' prior period</span>';
     } else {
       var count = info.object.elevationValue || info.object.colorValue || 0;
       text = '<strong style="font-size:14px;font-weight:700;">' + Math.round(count).toLocaleString() + ' assaults</strong><br>'
@@ -785,7 +806,7 @@ function updateUI() {
   document.getElementById("year-num").textContent = step.label;
   if (offMode === "compare") {
     document.getElementById("year-sub").textContent =
-      "YTD vs " + (step.year - 1) + " YTD";
+      "Q" + step.quarter + " YTD vs " + (step.year - 1) + " Q" + step.quarter + " YTD";
   } else {
     document.getElementById("year-sub").textContent = "QUARTERLY TOTAL";
   }
@@ -824,11 +845,13 @@ function updateUI() {
 function updateThresholdSlider(maxVal, isCompare) {
   var sl = document.getElementById("threshold-slider");
   var label = document.getElementById("threshold-val");
+  var hint = document.getElementById("fp-hint");
   if (isCompare) {
     sl.disabled = true;
     sl.value = 0;
     minThreshold = 0;
     label.textContent = "n/a";
+    if (hint) hint.textContent = "Not available in YoY mode";
   } else {
     sl.disabled = false;
     sl.max = Math.max(maxVal, 1);
@@ -836,7 +859,8 @@ function updateThresholdSlider(maxVal, isCompare) {
       minThreshold = 0;
       sl.value = 0;
     }
-    label.textContent = minThreshold + "+";
+    label.textContent = minThreshold.toLocaleString();
+    if (hint) hint.textContent = "Drag right to focus on hotspots (max: " + maxVal.toLocaleString() + ")";
   }
 }
 
@@ -944,7 +968,7 @@ document.getElementById("time-slider").addEventListener("input", function(e) {
 
 document.getElementById("threshold-slider").addEventListener("input", function(e) {
   minThreshold = parseInt(e.target.value);
-  document.getElementById("threshold-val").textContent = minThreshold + "+";
+  document.getElementById("threshold-val").textContent = minThreshold.toLocaleString();
   updateLayer();
 });
 
