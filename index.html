@@ -1144,9 +1144,11 @@ function buildLayers() {
         radius: HEX_RADIUS_M,
         extruded: true,
         getPosition: function(b) { return [b.lng, b.lat]; },
-        // Elevation proportional to globalMax so heights stay consistent across time
+        // Elevation proportional to globalMax so heights stay consistent across time.
+        // Matches the previous HexagonLayer formula: elevationRange [0,1500] * elevationScale 4
+        // = elevation up to 6000 meters at the max value.
         getElevation: function(b) {
-          return Math.min(1500, (b.delta / globalMax) * 1500 * 4);
+          return (b.delta / globalMax) * 6000;
         },
         getFillColor: function(b) { return hexColorForValue(b.delta); },
         getLineColor: [0, 0, 0, 0],
