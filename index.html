@@ -273,8 +273,8 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     <div class="tr-group">
       <div class="tr-label">Time granularity</div>
       <div class="view-pills">
-        <button class="pill-sm" id="gran-quarterly" onclick="setGranularity('quarterly',this)">Quarterly</button>
-        <button class="pill-sm active" id="gran-annual" onclick="setGranularity('annual',this)">Annual</button>
+        <button class="pill-sm active" id="gran-quarterly" onclick="setGranularity('quarterly',this)">Quarterly</button>
+        <button class="pill-sm" id="gran-annual" onclick="setGranularity('annual',this)">Annual</button>
       </div>
     </div>
     <div class="tr-group">
@@ -448,7 +448,7 @@ function parseGrid(gridTable) {
 // =============================================================================
 // BUILD TIME STEPS — quarterly or annual depending on granularity
 // =============================================================================
-var granularity = "annual"; // "quarterly" or "annual"
+var granularity = "quarterly"; // "quarterly" or "annual"
 
 function buildSteps() {
   if (granularity === "annual") {
@@ -1031,11 +1031,6 @@ function buildLayers() {
   var d = getStepData(step);
   var pts = d.points;
 
-  // Apply threshold filter
-  if (minThreshold > 0 && !d.isCompare) {
-    pts = pts.filter(function(p){return p.value >= minThreshold;});
-  }
-
   currentMaxValue = d.maxVal;
   // For the legend in compare mode, use the same compressed max we use for the layer
   // so legend labels match what's actually drawn.
@@ -1050,7 +1045,10 @@ function buildLayers() {
     legendMax = getGlobalMax(offMode, granularity === "annual");
   }
   updateLegend(legendMax, offMode);
-  updateThresholdSlider(d.maxVal, d.isCompare);
+  // Pass the bin-level max (same scale used for filter) so the slider range
+  // matches what's actually being filtered. In compare mode, fall back to source max.
+  var sliderMax = d.isCompare ? d.maxVal : getGlobalMax(offMode, granularity === "annual");
+  updateThresholdSlider(sliderMax, d.isCompare);
 
   var layers = [];
 
@@ -1118,30 +1116,46 @@ function buildLayers() {
         onHover: function(info) { handleHoverCompare(info, step); }
       }));
     } else {
+      // Manually bin source cells into 300m hexes so we can filter at the bin
+      // level (the visual hex level), not the source-cell level. Otherwise
+      // filtering would drop whole spikes whose individual source cells are
+      // small but sum to a large bin total.
+      var HEX_RADIUS_M = 300;
+      var hexBins = binPointsToHexGrid(pts, HEX_RADIUS_M);
+      // Apply threshold filter at the BIN level
+      if (minThreshold > 0) {
+        hexBins = hexBins.filter(function(b){ return b.delta >= minThreshold; });
+      }
       var globalMax = getGlobalMax(offMode, granularity === "annual");
-      layers.push(new deck.HexagonLayer({
+      // Color function with fixed thresholds proportional to global max
+      function hexColorForValue(v) {
+        var range = colorRange(offMode);
+        var stops = range.length;
+        // Linear scale across [0, globalMax]
+        var ratio = Math.min(1, v / globalMax);
+        var idx = Math.min(stops - 1, Math.floor(ratio * stops));
+        var c = range[idx];
+        return [c[0], c[1], c[2], 220];
+      }
+      layers.push(new deck.ColumnLayer({
         id: "hex",
-        data: pts,
-        getPosition: function(d) { return [d.lng, d.lat]; },
-        getColorWeight: function(d) { return d.value; },
-        getElevationWeight: function(d) { return d.value; },
-        radius: 300,
-        elevationScale: 4,
+        data: hexBins,
+        diskResolution: 6,
+        radius: HEX_RADIUS_M,
         extruded: true,
+        getPosition: function(b) { return [b.lng, b.lat]; },
+        // Elevation proportional to globalMax so heights stay consistent across time
+        getElevation: function(b) {
+          return Math.min(1500, (b.delta / globalMax) * 1500 * 4);
+        },
+        getFillColor: function(b) { return hexColorForValue(b.delta); },
+        getLineColor: [0, 0, 0, 0],
         pickable: true,
         coverage: 0.92,
-        colorRange: colorRange(offMode),
-        elevationRange: [0, 1500],
-        // Pin domains to global max so spike heights and colors mean the same
-        // thing across every year/quarter. Without this, deck.gl rescales every
-        // frame and the animation becomes visually meaningless.
-        colorDomain: [0, globalMax],
-        elevationDomain: [0, globalMax],
-        upperPercentile: 100,
         material: { ambient: 0.6, diffuse: 0.7, shininess: 32 },
         updateTriggers: {
-          getColorWeight: [tIdx, offMode, excludeStations, minThreshold],
-          getElevationWeight: [tIdx, offMode, excludeStations, minThreshold]
+          getElevation: [tIdx, offMode, excludeStations, minThreshold],
+          getFillColor:  [tIdx, offMode, excludeStations, minThreshold]
         },
         onHover: function(info) { handleHover(info, step, "hex"); }
       }));
@@ -1203,7 +1217,10 @@ function handleHover(info, step, mode) {
         + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + (step.year-1) + ' Q' + step.quarter + ' YTD</span><br>'
         + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + totalCur.toLocaleString() + ' this period &middot; ' + totalPrior.toLocaleString() + ' prior period</span>';
     } else {
-      var count = info.object.elevationValue || info.object.colorValue || 0;
+      // ColumnLayer with our manual bin objects — read .delta directly
+      var count = (info.object.delta !== undefined)
+        ? info.object.delta
+        : (info.object.elevationValue || info.object.colorValue || 0);
       text = '<strong style="font-size:14px;font-weight:700;">' + Math.round(count).toLocaleString() + ' assaults</strong><br>'
         + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' &middot; '
         + (offMode==="felony"?"Felony":offMode==="misd"?"Misdemeanor":"Combined") + '</span><br>'
@@ -1437,11 +1454,20 @@ function setSpeed(ms, btn) {
 }
 
 function startPlay() {
+  // If we're already at the end, restart from the beginning
+  if (tIdx >= tSteps.length - 1) {
+    tIdx = 0;
+    updateLayer();
+  }
   playing = true;
   playIv = setInterval(function() {
-    tIdx = (tIdx + 1) % tSteps.length;
+    if (tIdx >= tSteps.length - 1) {
+      // We're at the last step — stop here, don't wrap
+      stopPlay();
+      return;
+    }
+    tIdx = tIdx + 1;
     updateLayer();
-    if (tIdx === tSteps.length - 1) setTimeout(stopPlay, playSpd);
   }, playSpd);
   updateUI();
 }
