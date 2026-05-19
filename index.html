@@ -142,7 +142,31 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 .speed-btn{font-family:var(--fp);font-weight:700;font-size:9px;border:1px solid rgba(255,255,255,.12);background:none;color:rgba(255,255,255,.35);padding:5px 8px;cursor:pointer;transition:all .1s;}
 .speed-btn.active{background:rgba(255,255,255,.08);color:var(--white);border-color:rgba(255,255,255,.35);}
 
-/* Filter panel — separate from time slider for clarity */
+/* Prominent panel — same orange highlight effect as the yellow View Mode toggle */
+.tr-group.prominent{border-left-color:var(--yellow);}
+.tr-group.prominent .tr-label{color:var(--yellow);}
+.tr-group.disabled{opacity:.35;pointer-events:none;}
+
+/* Rankings section below the map */
+#rankings-section{background:var(--black);padding:48px 48px 32px;border-top:1px solid rgba(255,255,255,.06);}
+.rankings-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:24px;}
+.rankings-col-title{font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--orange);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(255,124,83,.2);}
+.rankings-col .sp-list{display:flex;flex-direction:column;gap:0;}
+.rankings-col .sp-row{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;}
+.rankings-col .sp-row:last-child{border-bottom:none;}
+.rankings-col .sp-rank{font-weight:700;font-size:14px;color:var(--orange);font-variant-numeric:tabular-nums;}
+.rankings-col .sp-pct strong{font-weight:700;color:var(--white);font-size:14px;}
+.rankings-col .sp-pct-name{color:rgba(255,255,255,.5);font-size:11px;display:block;line-height:1.3;margin-top:2px;}
+.rankings-col .sp-count{font-weight:700;color:var(--white);font-variant-numeric:tabular-nums;font-size:15px;}
+.rankings-col .sp-delta{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;}
+.rankings-col .sp-delta.up{color:var(--red);}
+.rankings-col .sp-delta.down{color:var(--green);}
+.rankings-col .sp-delta.flat{color:rgba(255,255,255,.4);}
+#rankings-period{color:var(--orange);font-style:italic;}
+
+@media (max-width:700px){
+  .rankings-grid{grid-template-columns:1fr;gap:24px;}
+}
 .filter-panel{position:absolute;left:20px;bottom:340px;z-index:10;
   background:rgba(5,5,7,.92);padding:14px 16px;
   border-left:2px solid var(--yellow);min-width:240px;}
@@ -216,18 +240,33 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
   </div>
 
   <div class="top-right">
+    <div class="tr-group prominent">
+      <div class="tr-label" style="color:var(--yellow);">View mode</div>
+      <div class="view-pills">
+        <button class="pill-sm active" id="mode-totals" onclick="setMode('totals',this)">Totals</button>
+        <button class="pill-sm" id="mode-compare" onclick="setMode('compare',this)">YoY change</button>
+      </div>
+    </div>
+    <div class="tr-group" id="offense-group">
+      <div class="tr-label">Offense type</div>
+      <div class="view-pills">
+        <button class="pill-sm active" id="off-combined" onclick="setOffense('combined',this)">Combined</button>
+        <button class="pill-sm" id="off-felony" onclick="setOffense('felony',this)">Felony</button>
+        <button class="pill-sm" id="off-misd" onclick="setOffense('misd',this)">Misd.</button>
+      </div>
+    </div>
+    <div class="tr-group">
+      <div class="tr-label">Time granularity</div>
+      <div class="view-pills">
+        <button class="pill-sm active" id="gran-quarterly" onclick="setGranularity('quarterly',this)">Quarterly</button>
+        <button class="pill-sm" id="gran-annual" onclick="setGranularity('annual',this)">Annual</button>
+      </div>
+    </div>
     <div class="tr-group">
       <div class="tr-label">Map style</div>
       <div class="view-pills">
         <button class="pill-sm" onclick="setMapStyle('hex',this)">3D Hex</button>
         <button class="pill-sm active" onclick="setMapStyle('heat',this)">Heatmap</button>
-      </div>
-    </div>
-    <div class="tr-group" style="border-left-color:var(--yellow);">
-      <div class="tr-label" style="color:var(--yellow);">View mode</div>
-      <div class="view-pills">
-        <button class="pill-sm active" id="mode-totals" onclick="setMode('totals',this)">Totals</button>
-        <button class="pill-sm" id="mode-compare" onclick="setMode('compare',this)">YoY change</button>
       </div>
     </div>
     <div class="tr-group">
@@ -240,17 +279,6 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
       <span class="spin-icon">&#8635;</span> Auto-rotate
     </button>
     <button class="icon-btn" onclick="resetView()">&#8634; Reset view</button>
-  </div>
-
-  <button class="sp-toggle-btn" id="sp-toggle" onclick="toggleSidePanel(true)">Show rankings</button>
-
-  <div class="side-panel" id="side-panel">
-    <button class="sp-close" onclick="toggleSidePanel(false)">&times;</button>
-    <div class="sp-tabs">
-      <button class="sp-tab active" onclick="setRankView('top',this)">Top 5 highest</button>
-      <button class="sp-tab" onclick="setRankView('bottom',this)">Bottom 5 lowest</button>
-    </div>
-    <div class="sp-list" id="sp-list"></div>
   </div>
 
   <div class="filter-panel" id="filter-panel">
@@ -280,14 +308,6 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
       </div>
       <div class="year-sub" id="year-sub">QUARTERLY TOTAL</div>
       <div class="year-counts" id="year-counts"></div>
-      <div class="year-dropdown-row">
-        <span class="dropdown-label">Jump to:</span>
-        <select id="time-dropdown" class="time-dropdown" onchange="jumpToStep(this.value)"></select>
-        <span class="granularity-toggle">
-          <button class="gran-btn active" id="gran-quarterly" onclick="setGranularity('quarterly',this)">Quarterly</button>
-          <button class="gran-btn" id="gran-annual" onclick="setGranularity('annual',this)">Annual</button>
-        </span>
-      </div>
     </div>
     <div class="slider-row">
       <span class="slider-label" id="slider-min">2006 Q1</span>
@@ -296,11 +316,6 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     </div>
     <div class="bottom-row">
       <button class="play-btn" id="play-btn" onclick="togglePlay()">&#9654;</button>
-      <div class="pill-group">
-        <button class="pill-btn active" onclick="setOffense('combined',this)">Combined</button>
-        <button class="pill-btn fel" onclick="setOffense('felony',this)">Felony</button>
-        <button class="pill-btn misd" onclick="setOffense('misd',this)">Misdemeanor</button>
-      </div>
       <div class="speed-group">
         <span class="speed-lbl">Speed</span>
         <button class="speed-btn active" onclick="setSpeed(1200,this)">1x</button>
@@ -311,6 +326,22 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
   </div>
   <div class="scroll-hint" id="scroll-hint">
     <span>&#8595;</span><span>Scroll for trend chart</span>
+  </div>
+</div>
+
+<div id="rankings-section">
+  <div class="chart-eyebrow">Vital City</div>
+  <div class="chart-heading" id="rankings-heading">Precinct rankings &#183; <span id="rankings-period">2026 Q1</span></div>
+  <div class="chart-subtext" id="rankings-subtext">Highest and lowest assault counts by NYPD precinct</div>
+  <div class="rankings-grid">
+    <div class="rankings-col">
+      <div class="rankings-col-title" id="rankings-top-title">Top 5 highest</div>
+      <div class="sp-list" id="sp-list-top"></div>
+    </div>
+    <div class="rankings-col">
+      <div class="rankings-col-title" id="rankings-bot-title">Bottom 5 lowest</div>
+      <div class="sp-list" id="sp-list-bot"></div>
+    </div>
   </div>
 </div>
 
@@ -591,52 +622,73 @@ function getPrecinctRankings(step) {
 function updateRankings(step) {
   if (!step) return;
   var ranks = getPrecinctRankings(step);
-  var listEl = document.getElementById("sp-list");
-  if (!listEl) return;
+  var topEl = document.getElementById("sp-list-top");
+  var botEl = document.getElementById("sp-list-bot");
+  if (!topEl || !botEl) return;
+
+  // Update period label and column titles
+  var periodEl = document.getElementById("rankings-period");
+  var topTitle = document.getElementById("rankings-top-title");
+  var botTitle = document.getElementById("rankings-bot-title");
+  var subtextEl = document.getElementById("rankings-subtext");
+
+  if (periodEl) {
+    var label = step.label;
+    if (step.annual && step.isPartial) label = step.year + " YTD";
+    periodEl.textContent = label;
+  }
 
   if (offMode === "compare") {
-    // Sort by delta or pct change depending on view
-    ranks.sort(function(a,b){
-      return rankView === "top" ? (b.delta || 0) - (a.delta || 0) : (a.delta || 0) - (b.delta || 0);
-    });
-    var slice = ranks.slice(0, 5);
-    listEl.innerHTML = slice.map(function(r, i) {
-      var name = PCT_NAMES[r.precinct] || "";
-      var delta = r.delta || 0;
-      var dCls = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
-      var dSign = delta > 0 ? "+" : "";
-      var dPct = (r.pctChange !== null && r.pctChange !== undefined)
-        ? (r.pctChange > 0 ? "+" : "") + r.pctChange.toFixed(0) + "%"
-        : "—";
-      return '<div class="sp-row">' +
-        '<span class="sp-rank">' + (i+1) + '</span>' +
-        '<span class="sp-pct"><strong>Pct ' + r.precinct + '</strong>' +
-          '<span class="sp-pct-name">' + name + '</span></span>' +
-        '<span><span class="sp-delta ' + dCls + '">' + dSign + delta.toLocaleString() + ' (' + dPct + ')</span></span>' +
-      '</div>';
-    }).join("");
-    document.querySelector(".sp-tabs .sp-tab:nth-child(1)").innerHTML = "Largest increase";
-    document.querySelector(".sp-tabs .sp-tab:nth-child(2)").innerHTML = "Largest decrease";
+    if (topTitle) topTitle.textContent = "Largest increase vs prior period";
+    if (botTitle) botTitle.textContent = "Largest decrease vs prior period";
+    if (subtextEl) subtextEl.textContent = "Precincts with the biggest year-over-year change";
+
+    // Top by largest increase
+    var sortedDesc = ranks.slice().sort(function(a,b){return (b.delta||0) - (a.delta||0);});
+    var sortedAsc  = ranks.slice().sort(function(a,b){return (a.delta||0) - (b.delta||0);});
+    topEl.innerHTML = renderCompareRows(sortedDesc.slice(0, 5));
+    botEl.innerHTML = renderCompareRows(sortedAsc.slice(0, 5));
   } else {
-    ranks.sort(function(a,b){
-      return rankView === "top" ? (b.count || 0) - (a.count || 0) : (a.count || 0) - (b.count || 0);
-    });
-    // For "bottom" mode, filter out zero-count precincts (those with no data)
-    if (rankView === "bottom") ranks = ranks.filter(function(r){return (r.count || 0) > 0;});
-    var slice2 = ranks.slice(0, 5);
-    listEl.innerHTML = slice2.map(function(r, i) {
-      var name = PCT_NAMES[r.precinct] || "";
-      var cnt = r.count || 0;
-      return '<div class="sp-row">' +
-        '<span class="sp-rank">' + (i+1) + '</span>' +
-        '<span class="sp-pct"><strong>Pct ' + r.precinct + '</strong>' +
-          '<span class="sp-pct-name">' + name + '</span></span>' +
-        '<span class="sp-count">' + cnt.toLocaleString() + '</span>' +
-      '</div>';
-    }).join("");
-    document.querySelector(".sp-tabs .sp-tab:nth-child(1)").innerHTML = "Top 5 highest";
-    document.querySelector(".sp-tabs .sp-tab:nth-child(2)").innerHTML = "Bottom 5 lowest";
+    if (topTitle) topTitle.textContent = "Top 5 highest";
+    if (botTitle) botTitle.textContent = "Bottom 5 lowest";
+    if (subtextEl) subtextEl.textContent = "Highest and lowest assault counts by NYPD precinct";
+
+    var sortedHigh = ranks.slice().sort(function(a,b){return (b.count||0) - (a.count||0);});
+    var sortedLow  = ranks.slice().filter(function(r){return (r.count||0) > 0;}).sort(function(a,b){return (a.count||0) - (b.count||0);});
+    topEl.innerHTML = renderCountRows(sortedHigh.slice(0, 5));
+    botEl.innerHTML = renderCountRows(sortedLow.slice(0, 5));
   }
+}
+
+function renderCountRows(rows) {
+  return rows.map(function(r, i) {
+    var name = PCT_NAMES[r.precinct] || "";
+    var cnt = r.count || 0;
+    return '<div class="sp-row">' +
+      '<span class="sp-rank">' + (i+1) + '</span>' +
+      '<span class="sp-pct"><strong>Pct ' + r.precinct + '</strong>' +
+        '<span class="sp-pct-name">' + name + '</span></span>' +
+      '<span class="sp-count">' + cnt.toLocaleString() + '</span>' +
+    '</div>';
+  }).join("");
+}
+
+function renderCompareRows(rows) {
+  return rows.map(function(r, i) {
+    var name = PCT_NAMES[r.precinct] || "";
+    var delta = r.delta || 0;
+    var dCls = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+    var dSign = delta > 0 ? "+" : "";
+    var dPct = (r.pctChange !== null && r.pctChange !== undefined)
+      ? (r.pctChange > 0 ? "+" : "") + r.pctChange.toFixed(0) + "%"
+      : "—";
+    return '<div class="sp-row">' +
+      '<span class="sp-rank">' + (i+1) + '</span>' +
+      '<span class="sp-pct"><strong>Pct ' + r.precinct + '</strong>' +
+        '<span class="sp-pct-name">' + name + '</span></span>' +
+      '<span class="sp-delta ' + dCls + '">' + dSign + delta.toLocaleString() + ' (' + dPct + ')</span>' +
+    '</div>';
+  }).join("");
 }
 
 // =============================================================================
@@ -1082,11 +1134,9 @@ function updateUI() {
   }
   document.getElementById("year-num").classList.toggle("playing", playing);
 
-  // Sync the slider, dropdown, and nav arrows
+  // Sync the slider and nav arrows
   document.getElementById("time-slider").value = String(tIdx);
   document.getElementById("time-slider").classList.toggle("playing", playing);
-  var dd = document.getElementById("time-dropdown");
-  if (dd && dd.options.length > 0) dd.value = String(tIdx);
   var prevBtn = document.getElementById("prev-btn");
   var nextBtn = document.getElementById("next-btn");
   if (prevBtn) prevBtn.disabled = (tIdx === 0);
@@ -1155,20 +1205,17 @@ function setMode(mode, btn) {
   viewMode2 = mode;
   document.querySelectorAll("#mode-totals,#mode-compare").forEach(function(b){b.classList.remove("active");});
   btn.classList.add("active");
+  var offenseGroup = document.getElementById("offense-group");
   if (mode === "compare") {
     offMode = "compare";
-    document.querySelectorAll(".pill-group .pill-btn").forEach(function(b){
-      b.style.opacity = "0.3";
-      b.style.pointerEvents = "none";
-    });
+    // Grey out the offense type group since it doesn't apply
+    if (offenseGroup) offenseGroup.classList.add("disabled");
   } else {
-    document.querySelectorAll(".pill-group .pill-btn").forEach(function(b){
-      b.style.opacity = "";
-      b.style.pointerEvents = "";
-    });
-    var activePill = document.querySelector(".pill-group .pill-btn.active");
-    if (activePill && activePill.textContent.toLowerCase().indexOf("felony") >= 0) offMode = "felony";
-    else if (activePill && activePill.textContent.toLowerCase().indexOf("misd") >= 0) offMode = "misd";
+    if (offenseGroup) offenseGroup.classList.remove("disabled");
+    // Restore offMode based on which offense pill is currently active
+    var activePill = document.querySelector("#offense-group .pill-sm.active");
+    if (activePill && activePill.id === "off-felony") offMode = "felony";
+    else if (activePill && activePill.id === "off-misd") offMode = "misd";
     else offMode = "combined";
   }
   // Re-build steps so 2006 gets locked/unlocked
@@ -1198,7 +1245,8 @@ function jumpToStep(value) {
 function setGranularity(g, btn) {
   if (granularity === g) return;
   granularity = g;
-  document.querySelectorAll(".granularity-toggle .gran-btn").forEach(function(b){b.classList.remove("active");});
+  document.getElementById("gran-quarterly").classList.remove("active");
+  document.getElementById("gran-annual").classList.remove("active");
   btn.classList.add("active");
   stopPlay();
   rebuildSteps(true);
@@ -1211,7 +1259,12 @@ function setMapStyle(style, btn) {
     return;
   }
   mapStyle = style;
-  document.querySelectorAll(".tr-group:nth-child(1) .pill-sm").forEach(function(b){b.classList.remove("active");});
+  // The map style group is the 4th .tr-group (index 3) in the new layout
+  // (View mode, Offense type, Time granularity, Map style)
+  var msGroup = btn.closest(".tr-group");
+  if (msGroup) {
+    msGroup.querySelectorAll(".pill-sm").forEach(function(b){b.classList.remove("active");});
+  }
   btn.classList.add("active");
   updateLayer();
 }
@@ -1222,30 +1275,13 @@ function toggleLabels(checked) { showLabels = checked; updateLayer(); }
 function setOffense(mode, btn) {
   if (viewMode2 === "compare") return; // ignore in compare mode
   offMode = mode;
-  document.querySelectorAll(".pill-group .pill-btn").forEach(function(b){b.classList.remove("active");});
+  document.querySelectorAll("#offense-group .pill-sm").forEach(function(b){b.classList.remove("active");});
   btn.classList.add("active");
-  if (mode === "felony") btn.classList.add("fel");
-  else if (mode === "misd") btn.classList.add("misd");
   updateLayer();
 }
 
 function setRankView(view, btn) {
-  rankView = view;
-  document.querySelectorAll(".sp-tab").forEach(function(t){t.classList.remove("active");});
-  btn.classList.add("active");
-  updateRankings(tSteps[tIdx]);
-}
-
-function toggleSidePanel(show) {
-  var panel = document.getElementById("side-panel");
-  var btn = document.getElementById("sp-toggle");
-  if (show) {
-    panel.classList.remove("collapsed");
-    btn.style.display = "none";
-  } else {
-    panel.classList.add("collapsed");
-    btn.style.display = "block";
-  }
+  // Legacy function kept for safety — no-op now since both rankings show simultaneously
 }
 
 function setSpeed(ms, btn) {
@@ -1498,15 +1534,9 @@ function rebuildSteps(preserveTime) {
   populateTimeDropdown();
 }
 
-// Populate the year/period dropdown for direct navigation
-function populateTimeDropdown() {
-  var sel = document.getElementById("time-dropdown");
-  if (!sel) return;
-  sel.innerHTML = tSteps.map(function(s, i) {
-    return '<option value="' + i + '">' + s.label + '</option>';
-  }).join("");
-  sel.value = String(tIdx);
-}
+// Dropdown was removed in the redesign; this function is now a no-op
+// kept so rebuildSteps doesn't need to be touched.
+function populateTimeDropdown() {}
 
 async function boot() {
   var bar = document.getElementById("ld-bar");
