@@ -13,6 +13,7 @@
 :root{
   --black:#050507;--white:#fff;--orange:#ff7c53;
   --indigo:#394882;--yellow:#dde44c;--magenta:#e7466d;
+  --green:#3a8a3e;--red:#c0392b;
   --charcoal:#707175;
   --fp:"halyard-text","Inter","Helvetica Neue",Arial,sans-serif;
 }
@@ -20,48 +21,89 @@ html{background:var(--black);}
 body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--black);}
 #map-section{position:relative;width:100%;height:100vh;overflow:hidden;}
 #map{position:absolute;inset:0;}
-.header{position:absolute;top:0;left:0;right:0;z-index:10;pointer-events:none;padding:20px 24px 60px;background:linear-gradient(to bottom,rgba(5,5,7,.96) 0%,rgba(5,5,7,0) 100%);}
+
+.header{position:absolute;top:0;left:0;right:380px;z-index:10;pointer-events:none;padding:20px 24px 40px;background:linear-gradient(to bottom,rgba(5,5,7,.96) 0%,rgba(5,5,7,0) 100%);}
 .hd-vc{font-weight:700;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--orange);display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .hd-vc::after{content:"";display:block;height:1px;width:32px;background:var(--orange);}
-.hd-title{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:34px;color:var(--white);line-height:1.1;letter-spacing:-.02em;}
+.hd-title{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:30px;color:var(--white);line-height:1.1;letter-spacing:-.02em;}
 .hd-title em{font-style:italic;color:var(--orange);}
-.hd-sub{font-weight:300;font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;}
+.hd-sub{font-weight:300;font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;max-width:600px;}
 
-.top-right{position:absolute;top:20px;right:20px;z-index:10;display:flex;flex-direction:column;gap:5px;align-items:flex-end;pointer-events:auto;}
-.tr-group{background:rgba(5,5,7,.85);padding:6px 8px;border-left:2px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
+/* Top-right controls */
+.top-right{position:absolute;top:20px;right:20px;z-index:10;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:auto;}
+.tr-group{background:rgba(5,5,7,.85);padding:8px 10px;border-left:2px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
 .tr-label{font-weight:700;font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.4);}
 .view-pills{display:flex;gap:2px;}
 .pill-sm{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);background:rgba(5,5,7,.6);color:rgba(255,255,255,.5);padding:5px 10px;cursor:pointer;transition:all .1s;}
 .pill-sm:hover:not(.active){border-color:rgba(255,255,255,.5);color:var(--white);}
 .pill-sm.active{background:var(--white);color:var(--black);border-color:var(--white);}
-.icon-btn{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);background:rgba(5,5,7,.6);color:rgba(255,255,255,.5);padding:5px 10px;cursor:pointer;transition:all .1s;display:flex;align-items:center;gap:5px;}
+.icon-btn{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);background:rgba(5,5,7,.85);color:rgba(255,255,255,.5);padding:6px 10px;cursor:pointer;transition:all .1s;display:flex;align-items:center;gap:5px;}
 .icon-btn:hover{border-color:rgba(255,255,255,.5);color:var(--white);}
 .icon-btn.active{border-color:var(--yellow);color:var(--yellow);background:rgba(221,228,76,.08);}
 .spin-icon{display:inline-block;}
 .icon-btn.active .spin-icon{animation:spin 3s linear infinite;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-
 .toggle-row{display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.55);cursor:pointer;user-select:none;}
 .toggle-row input{accent-color:var(--orange);width:13px;height:13px;cursor:pointer;}
 .toggle-row:hover{color:var(--white);}
 
+/* Right side panel for top/bottom precincts */
+.side-panel{position:absolute;top:170px;right:20px;z-index:10;width:340px;
+  background:rgba(5,5,7,.92);border-left:2px solid var(--orange);
+  padding:14px 16px;max-height:calc(100vh - 380px);overflow-y:auto;
+  pointer-events:auto;}
+.sp-tabs{display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,.1);}
+.sp-tab{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  background:none;border:none;color:rgba(255,255,255,.4);padding:6px 10px;cursor:pointer;
+  border-bottom:2px solid transparent;}
+.sp-tab.active{color:var(--white);border-bottom-color:var(--orange);}
+.sp-tab:hover:not(.active){color:rgba(255,255,255,.7);}
+.sp-title{font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px;}
+.sp-list{display:flex;flex-direction:column;gap:4px;}
+.sp-row{display:grid;grid-template-columns:24px 1fr auto;align-items:center;gap:8px;font-size:11px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.sp-rank{font-weight:700;font-size:11px;color:var(--orange);font-variant-numeric:tabular-nums;}
+.sp-pct{font-weight:300;}
+.sp-pct strong{font-weight:700;color:var(--white);}
+.sp-pct-name{color:rgba(255,255,255,.5);font-size:10px;display:block;line-height:1.3;}
+.sp-count{font-weight:700;color:var(--white);font-variant-numeric:tabular-nums;font-size:12px;}
+.sp-delta{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;}
+.sp-delta.up{color:var(--red);}
+.sp-delta.down{color:var(--green);}
+.sp-delta.flat{color:rgba(255,255,255,.4);}
+.sp-toggle-btn{position:absolute;top:170px;right:20px;z-index:11;
+  background:rgba(5,5,7,.85);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.5);font-family:var(--fp);font-weight:700;font-size:9px;
+  letter-spacing:.1em;text-transform:uppercase;padding:6px 10px;cursor:pointer;
+  display:none;}
+.sp-toggle-btn:hover{color:var(--white);border-color:rgba(255,255,255,.5);}
+.side-panel.collapsed{display:none;}
+.sp-close{position:absolute;top:8px;right:10px;background:none;border:none;color:rgba(255,255,255,.4);font-size:18px;cursor:pointer;line-height:1;padding:0 4px;}
+.sp-close:hover{color:var(--white);}
+
+/* Bottom controls */
 .controls{position:absolute;bottom:0;left:0;right:0;z-index:10;padding:0 24px 20px;background:linear-gradient(to top,rgba(5,5,7,.97) 0%,rgba(5,5,7,.75) 65%,rgba(5,5,7,0) 100%);}
-.year-display{text-align:center;margin-bottom:12px;}
-.year-num{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:68px;line-height:1;letter-spacing:-.03em;color:var(--white);text-shadow:0 0 60px rgba(255,124,83,.35);transition:color .2s;}
+.year-display{text-align:center;margin-bottom:10px;}
+.year-num{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:60px;line-height:1;letter-spacing:-.03em;color:var(--white);text-shadow:0 0 60px rgba(255,124,83,.35);transition:color .2s;}
 .year-num.playing{color:var(--orange);}
 .year-sub{font-weight:700;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:3px;}
 .year-counts{font-weight:300;font-size:12px;color:rgba(255,255,255,.55);margin-top:3px;}
 .year-counts strong{color:var(--white);font-weight:700;}
 
-.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .slider-label{font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);white-space:nowrap;}
 input[type=range]{flex:1;height:3px;-webkit-appearance:none;appearance:none;background:rgba(255,255,255,.12);border-radius:2px;cursor:pointer;outline:none;}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--orange);box-shadow:0 0 10px rgba(255,124,83,.5);cursor:pointer;transition:transform .1s;}
 input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3);}
 input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 
+/* Threshold slider — a second row */
+.thresh-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:9px;}
+.thresh-row .slider-label{flex-shrink:0;}
+#threshold-slider::-webkit-slider-thumb{background:var(--yellow);box-shadow:0 0 8px rgba(221,228,76,.4);width:13px;height:13px;}
+#threshold-val{font-weight:700;font-size:10px;color:var(--yellow);font-variant-numeric:tabular-nums;min-width:60px;text-align:right;}
+
 .bottom-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.play-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--orange);background:none;color:var(--orange);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.play-btn{width:42px;height:42px;border-radius:50%;border:2px solid var(--orange);background:none;color:var(--orange);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
 .play-btn:hover{background:var(--orange);color:var(--black);transform:scale(1.1);}
 .play-btn.playing{border-color:var(--yellow);color:var(--yellow);}
 .pill-group{display:flex;gap:2px;}
@@ -70,20 +112,23 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 .pill-btn.active{background:var(--white);color:var(--black);border-color:var(--white);}
 .pill-btn.active.fel{background:var(--orange);border-color:var(--orange);color:var(--black);}
 .pill-btn.active.misd{background:var(--indigo);border-color:var(--indigo);color:var(--white);}
+.pill-btn.active.compare{background:var(--yellow);border-color:var(--yellow);color:var(--black);}
 .speed-group{display:flex;gap:2px;margin-left:auto;align-items:center;}
 .speed-lbl{font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-right:4px;}
 .speed-btn{font-family:var(--fp);font-weight:700;font-size:9px;border:1px solid rgba(255,255,255,.12);background:none;color:rgba(255,255,255,.35);padding:5px 8px;cursor:pointer;transition:all .1s;}
 .speed-btn.active{background:rgba(255,255,255,.08);color:var(--white);border-color:rgba(255,255,255,.35);}
 
-.legend{position:absolute;bottom:160px;right:20px;z-index:10;background:rgba(5,5,7,.85);padding:10px 12px;border-left:2px solid rgba(255,255,255,.08);}
-.legend-title{font-weight:700;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:7px;}
-.legend-bar{width:90px;height:8px;border-radius:1px;background:linear-gradient(to right,#141482,#0050c8,#00aaff,#44dd88,#ffdd00,#ff7c53,#e7466d);}
-.legend-row{display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,.35);margin-top:3px;}
+/* Improved legend with actual counts */
+.legend{position:absolute;left:20px;bottom:180px;z-index:10;background:rgba(5,5,7,.85);padding:10px 12px;border-left:2px solid rgba(255,255,255,.08);min-width:160px;}
+.legend-title{font-weight:700;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;}
+.legend-stops{display:flex;flex-direction:column;gap:4px;}
+.legend-stop{display:flex;align-items:center;gap:8px;font-size:10px;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;}
+.legend-swatch{width:14px;height:14px;border-radius:2px;flex-shrink:0;}
 
 .map-tooltip{position:absolute;pointer-events:none;background:rgba(5,5,7,.96);border-left:3px solid var(--orange);padding:10px 14px;z-index:20;font-size:12px;line-height:1.7;white-space:nowrap;opacity:0;transition:opacity .12s;}
 .map-tooltip.visible{opacity:1;}
 
-.scroll-hint{position:absolute;bottom:82px;left:50%;transform:translateX(-50%);font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.2);z-index:10;pointer-events:none;transition:opacity .4s;display:flex;flex-direction:column;align-items:center;gap:3px;animation:bob 2s ease-in-out infinite;}
+.scroll-hint{position:absolute;bottom:78px;left:50%;transform:translateX(-50%);font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.2);z-index:10;pointer-events:none;transition:opacity .4s;display:flex;flex-direction:column;align-items:center;gap:3px;animation:bob 2s ease-in-out infinite;}
 @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(5px)}}
 
 #chart-section{background:var(--black);padding:48px 48px 64px;border-top:1px solid rgba(255,255,255,.06);}
@@ -103,6 +148,11 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 #err{position:fixed;inset:0;z-index:100;background:var(--black);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:2rem;}
 #err h2{font-size:18px;font-weight:700;}
 #err p{font-size:13px;color:var(--charcoal);line-height:1.6;}
+
+@media (max-width:900px){
+  .side-panel{width:calc(100% - 40px);max-height:200px;top:auto;bottom:280px;}
+  .header{right:20px;}
+}
 </style>
 </head>
 <body>
@@ -120,20 +170,14 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 
 <div id="map-section">
   <div id="map"></div>
+
   <div class="header">
     <div class="hd-vc">Vital City</div>
     <div class="hd-title">NYC <em>assault</em> &#8212; 3D map</div>
-    <div class="hd-sub">Felony &amp; misdemeanor complaints by location &#183; drag to pan &#183; right-click drag to rotate</div>
+    <div class="hd-sub">Felony and misdemeanor complaints by location &#183; drag to pan &#183; right-click drag to rotate</div>
   </div>
 
   <div class="top-right">
-    <div class="tr-group">
-      <div class="tr-label">Time</div>
-      <div class="view-pills">
-        <button class="pill-sm active" onclick="setViewMode('yearly',this)">Yearly</button>
-        <button class="pill-sm" onclick="setViewMode('monthly',this)">Monthly</button>
-      </div>
-    </div>
     <div class="tr-group">
       <div class="tr-label">Map style</div>
       <div class="view-pills">
@@ -146,6 +190,10 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
         <input type="checkbox" id="exclude-stations" checked onchange="toggleStations(this.checked)">
         Exclude precinct stations
       </label>
+      <label class="toggle-row">
+        <input type="checkbox" id="show-labels" checked onchange="toggleLabels(this.checked)">
+        Show neighborhood labels
+      </label>
     </div>
     <button class="icon-btn" id="rotate-btn" onclick="toggleRotate()">
       <span class="spin-icon">&#8635;</span> Auto-rotate
@@ -153,24 +201,39 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     <button class="icon-btn" onclick="resetView()">&#8634; Reset view</button>
   </div>
 
-  <div class="legend">
-    <div class="legend-title">Assault density</div>
-    <div class="legend-bar"></div>
-    <div class="legend-row"><span>Low</span><span>High</span></div>
+  <button class="sp-toggle-btn" id="sp-toggle" onclick="toggleSidePanel(true)">Show rankings</button>
+
+  <div class="side-panel" id="side-panel">
+    <button class="sp-close" onclick="toggleSidePanel(false)">&times;</button>
+    <div class="sp-tabs">
+      <button class="sp-tab active" onclick="setRankView('top',this)">Top 10 highest</button>
+      <button class="sp-tab" onclick="setRankView('bottom',this)">Bottom 10 lowest</button>
+    </div>
+    <div class="sp-list" id="sp-list"></div>
+  </div>
+
+  <div class="legend" id="legend">
+    <div class="legend-title">Assault count</div>
+    <div class="legend-stops" id="legend-stops"></div>
   </div>
 
   <div class="map-tooltip" id="tooltip"></div>
 
   <div class="controls">
     <div class="year-display">
-      <div class="year-num" id="year-num">2025</div>
-      <div class="year-sub" id="year-sub">ANNUAL TOTAL</div>
+      <div class="year-num" id="year-num">2026 Q1</div>
+      <div class="year-sub" id="year-sub">QUARTERLY TOTAL</div>
       <div class="year-counts" id="year-counts"></div>
     </div>
     <div class="slider-row">
-      <span class="slider-label" id="slider-min">2006</span>
-      <input type="range" id="time-slider" min="0" max="19" value="19" step="1">
-      <span class="slider-label" id="slider-max">2025</span>
+      <span class="slider-label" id="slider-min">2006 Q1</span>
+      <input type="range" id="time-slider" min="0" max="0" value="0" step="1">
+      <span class="slider-label" id="slider-max">2026 Q1</span>
+    </div>
+    <div class="thresh-row">
+      <span class="slider-label">Min count</span>
+      <input type="range" id="threshold-slider" min="0" max="1000" value="0" step="1">
+      <span id="threshold-val">0+</span>
     </div>
     <div class="bottom-row">
       <button class="play-btn" id="play-btn" onclick="togglePlay()">&#9654;</button>
@@ -178,6 +241,7 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
         <button class="pill-btn active" onclick="setOffense('combined',this)">Combined</button>
         <button class="pill-btn fel" onclick="setOffense('felony',this)">Felony</button>
         <button class="pill-btn misd" onclick="setOffense('misd',this)">Misdemeanor</button>
+        <button class="pill-btn" onclick="setOffense('compare',this)">YoY change</button>
       </div>
       <div class="speed-group">
         <span class="speed-lbl">Speed</span>
@@ -197,95 +261,292 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
   <div class="chart-heading">Citywide assault over time</div>
   <div class="chart-subtext">Total complaints by year &#183; highlighted dot tracks the map</div>
   <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
-  <div class="chart-source">Source: NYPD Complaint Data Historic and Current YTD, NYC Open Data. Felony and misdemeanor assault complaints geocoded by NYPD, 2006-2025. Locations rounded to a ~110m grid for aggregation.</div>
+  <div class="chart-source">Source: NYPD Complaint Data Historic and Current YTD, NYC Open Data. Felony and misdemeanor assault complaints geocoded by NYPD, 2006-2026 YTD. Locations rounded to a ~110m grid for aggregation. Precinct station fallback coordinates excluded by default.</div>
 </div>
 
 <script>
 // =============================================================================
+// PRECINCT NAMES + CENTROIDS (for labels and rankings)
+// =============================================================================
+var PCT_NAMES={1:"Financial District",5:"Chinatown/LES",6:"West Village",7:"Lower East Side",9:"East Village",10:"Chelsea/Hell's Kitchen",13:"Gramercy",14:"Midtown South",17:"Midtown East",18:"Midtown North",19:"Upper East Side",20:"Upper West Side",22:"Central Park",23:"East Harlem",24:"UWS/Manhattan Valley",25:"East Harlem",26:"Morningside Heights",28:"Harlem",30:"West Harlem",32:"Harlem",33:"Washington Heights",34:"Washington Heights",40:"Mott Haven",41:"Longwood",42:"Morrisania",43:"Hunts Point",44:"Melrose",45:"Tremont",46:"East Tremont",47:"Fordham",48:"Belmont",49:"Pelham Parkway",50:"Riverdale",52:"Kingsbridge",53:"Wakefield",61:"Coney Island",62:"Brighton Beach",63:"Bay Ridge",66:"Bensonhurst",67:"Crown Heights N.",68:"Bay Ridge/Dyker Hts",69:"Canarsie",70:"Flatbush",71:"Crown Heights S.",72:"Sunset Park",73:"Brownsville",75:"East New York",76:"Carroll Gardens",77:"Crown Heights",78:"Park Slope",79:"Bushwick",81:"Bed-Stuy",83:"Bushwick E.",84:"Brooklyn Heights",88:"Boerum Hill",90:"Greenpoint/Wburg",94:"Sea Gate",100:"Howard Beach",101:"Far Rockaway",102:"Richmond Hill",103:"Jackson Heights",104:"Middle Village",105:"Queens Village",106:"Ozone Park",107:"Fresh Meadows",108:"Sunnyside",109:"Flushing",110:"Corona/Elmhurst",111:"Bayside",112:"Forest Hills",113:"Jamaica",114:"Astoria/LIC",115:"Jackson Hts/Elmhurst",120:"St. George",121:"New Springville",122:"South Beach",123:"Tottenville"};
+
+// Neighborhood reference labels (placed on map)
+var NEIGHBORHOOD_LABELS = [
+  {name:"Times Square",lng:-73.9855,lat:40.758},
+  {name:"Midtown",lng:-73.9784,lat:40.752},
+  {name:"Union Square",lng:-73.991,lat:40.736},
+  {name:"East Village",lng:-73.984,lat:40.727},
+  {name:"Harlem",lng:-73.945,lat:40.81},
+  {name:"Washington Hts.",lng:-73.94,lat:40.84},
+  {name:"South Bronx",lng:-73.91,lat:40.82},
+  {name:"Fordham",lng:-73.895,lat:40.86},
+  {name:"East New York",lng:-73.882,lat:40.667},
+  {name:"Bed-Stuy",lng:-73.94,lat:40.687},
+  {name:"Bushwick",lng:-73.92,lat:40.694},
+  {name:"Brownsville",lng:-73.911,lat:40.663},
+  {name:"Williamsburg",lng:-73.957,lat:40.714},
+  {name:"Downtown BK",lng:-73.989,lat:40.692},
+  {name:"Coney Island",lng:-73.978,lat:40.575},
+  {name:"Flatbush",lng:-73.958,lat:40.644},
+  {name:"Astoria",lng:-73.93,lat:40.764},
+  {name:"Jackson Hts.",lng:-73.883,lat:40.751},
+  {name:"Flushing",lng:-73.831,lat:40.766},
+  {name:"Jamaica",lng:-73.79,lat:40.7},
+  {name:"Far Rockaway",lng:-73.748,lat:40.602},
+  {name:"St. George",lng:-74.077,lat:40.643},
+  {name:"Soundview",lng:-73.86,lat:40.82}
+];
+
+// =============================================================================
 // STATE
 // =============================================================================
-var deckgl=null, MAP_DATA=null, GRID=null, PRECINCT_STATIONS=new Set();
-var viewMode="yearly", offMode="combined", mapStyle="hex";
-var excludeStations=true;
+var deckgl=null, MAP_DATA=null, PRECINCT_STATIONS=[];
+var mapStyle="hex", offMode="combined", showLabels=true;
+var excludeStations=true, rankView="top";
 var tIdx=0, tSteps=[], playing=false, playIv=null, playSpd=1200;
 var autoRot=false, rotRAF=null, rotBearing=-15, tChart=null;
+var minThreshold=0, currentMaxValue=1;
 var IV={longitude:-73.97, latitude:40.71, zoom:10.6, pitch:52, bearing:-15};
 
 // =============================================================================
-// COLUMNAR PARSING — build a fast index
+// COLUMNAR PARSING
 // =============================================================================
-// Grid columns: [year, lng_bin, lat_bin, offense, is_precinct_station, n]
-// We index by year-string so we can quickly filter on view changes.
-var GRID_BY_YEAR = {};  // { 2006: [{lng,lat,offense,isStation,n}, ...], ... }
+// Grid columns: [year, quarter, lng_bin, lat_bin, offense, is_precinct_station, precinct, n]
+// Index by year-quarter and by year alone for fast lookups
+var GRID_BY_STEP = {};   // "2006-1" -> [{lng,lat,offense,isStation,precinct,n}, ...]
+var GRID_BY_YEAR = {};   // 2006 -> [...]  (for full-year YoY comparisons)
 
 function parseGrid(gridTable) {
   var cols = gridTable.cols;
   var iYear = cols.indexOf("year");
+  var iQ    = cols.indexOf("quarter");
   var iLng  = cols.indexOf("lng_bin");
   var iLat  = cols.indexOf("lat_bin");
   var iOff  = cols.indexOf("offense");
   var iSta  = cols.indexOf("is_precinct_station");
+  var iPct  = cols.indexOf("precinct");
   var iN    = cols.indexOf("n");
   var rows  = gridTable.rows;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
-    var y = r[iYear];
+    var y = r[iYear], q = r[iQ];
+    var stepKey = y + "-" + q;
+    var rec = {
+      lng: r[iLng], lat: r[iLat],
+      offense: r[iOff], isStation: !!r[iSta],
+      precinct: r[iPct], n: r[iN]
+    };
+    if (!GRID_BY_STEP[stepKey]) GRID_BY_STEP[stepKey] = [];
+    GRID_BY_STEP[stepKey].push(rec);
     if (!GRID_BY_YEAR[y]) GRID_BY_YEAR[y] = [];
-    GRID_BY_YEAR[y].push({
-      lng: r[iLng],
-      lat: r[iLat],
-      offense: r[iOff],
-      isStation: !!r[iSta],
-      n: r[iN]
-    });
+    GRID_BY_YEAR[y].push(rec);
   }
 }
 
 // =============================================================================
-// DATA AGGREGATION
+// BUILD TIME STEPS — quarterly
 // =============================================================================
-// For a given step (year), filter rows by offense and station flag,
-// then return a flat array of {lng, lat, value} for deck.gl.
-function getPointsForStep(step) {
-  var rows = GRID_BY_YEAR[step.year] || [];
-  var result = [];
+function buildSteps() {
+  var keys = Object.keys(GRID_BY_STEP).map(function(k){
+    var p = k.split("-"); return {year:+p[0], q:+p[1], key:k};
+  });
+  keys.sort(function(a,b){
+    if (a.year !== b.year) return a.year - b.year;
+    return a.q - b.q;
+  });
+  return keys.map(function(k){
+    return {
+      year: k.year, quarter: k.q, key: k.key,
+      label: k.year + " Q" + k.q,
+      isFullYear: false
+    };
+  });
+}
+
+// =============================================================================
+// AGGREGATE POINTS FOR A STEP (or YoY comparison)
+// =============================================================================
+// Returns: { points: [{lng,lat,value}], maxVal, totalFel, totalMisd }
+function getStepData(step) {
+  var rows = GRID_BY_STEP[step.key] || [];
+
+  if (offMode === "compare") {
+    // YoY YTD comparison:
+    // Current = sum from Q1 to current quarter of current year
+    // Prior = sum from Q1 to current quarter of prior year
+    var curYear = step.year, curQ = step.quarter, priorYear = curYear - 1;
+
+    // Build YTD aggregation by lng/lat
+    var curAgg = {}, priorAgg = {};
+    function addToAgg(rows, agg, maxQ) {
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (r.quarter > maxQ) continue;
+        if (excludeStations && r.isStation) continue;
+        var k = r.lng + "," + r.lat;
+        agg[k] = (agg[k] || 0) + r.n;
+      }
+    }
+    addToAgg(GRID_BY_YEAR[curYear] || [], curAgg, curQ);
+    addToAgg(GRID_BY_YEAR[priorYear] || [], priorAgg, curQ);
+
+    // Compute delta per cell
+    var allKeys = {};
+    for (var k1 in curAgg) allKeys[k1] = true;
+    for (var k2 in priorAgg) allKeys[k2] = true;
+
+    var points = [];
+    var maxAbsDelta = 1;
+    for (var key in allKeys) {
+      var parts = key.split(",");
+      var lng = +parts[0], lat = +parts[1];
+      var c = curAgg[key] || 0;
+      var p = priorAgg[key] || 0;
+      var delta = c - p;
+      if (Math.abs(delta) > maxAbsDelta) maxAbsDelta = Math.abs(delta);
+      points.push({lng:lng, lat:lat, value:delta, cur:c, prior:p});
+    }
+
+    return {
+      points: points, maxVal: maxAbsDelta,
+      totals: {cur: sumObj(curAgg), prior: sumObj(priorAgg)},
+      isCompare: true
+    };
+  }
+
+  // Standard mode (combined / felony / misd)
+  var points = [], maxV = 1, fel=0, misd=0;
+  var byCell = {};
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     if (excludeStations && r.isStation) continue;
     if (offMode === "felony" && r.offense !== "felony") continue;
     if (offMode === "misd"   && r.offense !== "misd")   continue;
-    // Expand by count: HexagonLayer/HeatmapLayer want raw points,
-    // but we can use getWeight to avoid actual expansion
-    result.push({ lng: r.lng, lat: r.lat, value: r.n, offense: r.offense });
+    if (r.offense === "felony") fel += r.n;
+    if (r.offense === "misd")   misd += r.n;
+    var k = r.lng + "," + r.lat;
+    byCell[k] = (byCell[k] || 0) + r.n;
   }
-  return result;
+  for (var key in byCell) {
+    var parts = key.split(",");
+    var v = byCell[key];
+    if (v > maxV) maxV = v;
+    points.push({lng:+parts[0], lat:+parts[1], value:v});
+  }
+  return {
+    points: points, maxVal: maxV,
+    totals: {fel: fel, misd: misd, total: fel + misd},
+    isCompare: false
+  };
 }
 
-// Compute citywide totals for the year-display strip
-function getCitywideTotals(step) {
-  var rows = GRID_BY_YEAR[step.year] || [];
-  var fel = 0, misd = 0;
+function sumObj(o) { var s = 0; for (var k in o) s += o[k]; return s; }
+
+// =============================================================================
+// PRECINCT RANKINGS for top/bottom 10
+// =============================================================================
+function getPrecinctRankings(step) {
+  var rows;
+  if (offMode === "compare") {
+    // YoY YTD precinct totals
+    var byPctCur = {}, byPctPrior = {};
+    var curRows = GRID_BY_YEAR[step.year] || [];
+    var priorRows = GRID_BY_YEAR[step.year-1] || [];
+    for (var i = 0; i < curRows.length; i++) {
+      var r = curRows[i];
+      if (r.quarter > step.quarter) continue;
+      if (excludeStations && r.isStation) continue;
+      if (!r.precinct) continue;
+      byPctCur[r.precinct] = (byPctCur[r.precinct] || 0) + r.n;
+    }
+    for (var j = 0; j < priorRows.length; j++) {
+      var r2 = priorRows[j];
+      if (r2.quarter > step.quarter) continue;
+      if (excludeStations && r2.isStation) continue;
+      if (!r2.precinct) continue;
+      byPctPrior[r2.precinct] = (byPctPrior[r2.precinct] || 0) + r2.n;
+    }
+    var allPcts = {};
+    for (var p1 in byPctCur) allPcts[p1] = true;
+    for (var p2 in byPctPrior) allPcts[p2] = true;
+    var arr = [];
+    for (var pct in allPcts) {
+      var c = byPctCur[pct] || 0, p = byPctPrior[pct] || 0;
+      arr.push({precinct: +pct, current: c, prior: p, delta: c - p,
+        pctChange: p > 0 ? ((c - p) / p * 100) : null});
+    }
+    return arr;
+  }
+  // Standard mode — for current step only
+  rows = GRID_BY_STEP[step.key] || [];
+  var byPct = {};
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     if (excludeStations && r.isStation) continue;
-    if (r.offense === "felony") fel += r.n;
-    else if (r.offense === "misd") misd += r.n;
+    if (offMode === "felony" && r.offense !== "felony") continue;
+    if (offMode === "misd"   && r.offense !== "misd")   continue;
+    if (!r.precinct) continue;
+    byPct[r.precinct] = (byPct[r.precinct] || 0) + r.n;
   }
-  return { fel: fel, misd: misd, total: fel + misd };
+  var arr2 = [];
+  for (var pct2 in byPct) arr2.push({precinct: +pct2, count: byPct[pct2]});
+  return arr2;
+}
+
+function updateRankings(step) {
+  var ranks = getPrecinctRankings(step);
+  var listEl = document.getElementById("sp-list");
+
+  if (offMode === "compare") {
+    // Sort by delta or pct change depending on view
+    ranks.sort(function(a,b){
+      return rankView === "top" ? b.delta - a.delta : a.delta - b.delta;
+    });
+    var slice = ranks.slice(0, 10);
+    listEl.innerHTML = slice.map(function(r, i) {
+      var name = PCT_NAMES[r.precinct] || "";
+      var dCls = r.delta > 0 ? "up" : r.delta < 0 ? "down" : "flat";
+      var dSign = r.delta > 0 ? "+" : "";
+      var dPct = r.pctChange !== null
+        ? (r.pctChange > 0 ? "+" : "") + r.pctChange.toFixed(0) + "%"
+        : "—";
+      return '<div class="sp-row">' +
+        '<span class="sp-rank">' + (i+1) + '</span>' +
+        '<span class="sp-pct"><strong>Pct ' + r.precinct + '</strong>' +
+          '<span class="sp-pct-name">' + name + '</span></span>' +
+        '<span><span class="sp-delta ' + dCls + '">' + dSign + r.delta.toLocaleString() + ' (' + dPct + ')</span></span>' +
+      '</div>';
+    }).join("");
+    document.querySelectorAll(".sp-tab").forEach(function(t){
+      t.textContent = t.textContent.replace(/highest|lowest|largest increase|largest decrease/i,
+        t.dataset.view === "top" ? "Largest increase" : "Largest decrease");
+    });
+    document.querySelector(".sp-tabs .sp-tab:nth-child(1)").innerHTML = "Largest increase";
+    document.querySelector(".sp-tabs .sp-tab:nth-child(2)").innerHTML = "Largest decrease";
+  } else {
+    ranks.sort(function(a,b){
+      return rankView === "top" ? b.count - a.count : a.count - b.count;
+    });
+    // For "bottom" mode, filter out zero-count precincts (those with no data)
+    if (rankView === "bottom") ranks = ranks.filter(function(r){return r.count > 0;});
+    var slice2 = ranks.slice(0, 10);
+    listEl.innerHTML = slice2.map(function(r, i) {
+      var name = PCT_NAMES[r.precinct] || "";
+      return '<div class="sp-row">' +
+        '<span class="sp-rank">' + (i+1) + '</span>' +
+        '<span class="sp-pct"><strong>Pct ' + r.precinct + '</strong>' +
+          '<span class="sp-pct-name">' + name + '</span></span>' +
+        '<span class="sp-count">' + r.count.toLocaleString() + '</span>' +
+      '</div>';
+    }).join("");
+    document.querySelector(".sp-tabs .sp-tab:nth-child(1)").innerHTML = "Top 10 highest";
+    document.querySelector(".sp-tabs .sp-tab:nth-child(2)").innerHTML = "Bottom 10 lowest";
+  }
 }
 
 // =============================================================================
-// BUILD STEPS — yearly for now (monthly view would need different data)
+// COLOR SCALES
 // =============================================================================
-function buildSteps() {
-  var years = Object.keys(GRID_BY_YEAR).map(Number).sort(function(a,b){return a-b;});
-  return years.map(function(y){ return { label: String(y), year: y }; });
-}
-
-// =============================================================================
-// COLOR SCALES (deck.gl-friendly)
-// =============================================================================
-// Returns array of [r,g,b] for color range
 function colorRange(mode) {
   if (mode === "felony") {
     return [
@@ -299,7 +560,15 @@ function colorRange(mode) {
       [70, 100, 200],  [120, 150, 230],  [180, 200, 240]
     ];
   }
-  // Combined: full heat scale (blue to red)
+  if (mode === "compare") {
+    // Diverging: red (worse) - white-ish (no change) - green (better)
+    return [
+      [50, 120, 50],   [110, 170, 90],   [180, 210, 150],
+      [220, 220, 220], [240, 180, 140],  [220, 100, 80],
+      [180, 50, 50]
+    ];
+  }
+  // Combined: full heat scale
   return [
     [20, 20, 140],   [0, 80, 210],     [0, 190, 170],
     [60, 210, 80],   [255, 200, 0],    [255, 124, 83],
@@ -308,15 +577,69 @@ function colorRange(mode) {
 }
 
 // =============================================================================
+// LEGEND with actual count thresholds
+// =============================================================================
+function rgbStr(c) { return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")"; }
+function updateLegend(maxVal, mode) {
+  var range = colorRange(mode);
+  var stops = range.length;
+  var legendHTML = "";
+  var title = "Assault count";
+  if (mode === "compare") title = "Change vs prior YTD";
+
+  // Build threshold strings
+  for (var i = stops - 1; i >= 0; i--) {
+    var lo = Math.round(maxVal * (i / stops));
+    var hi = Math.round(maxVal * ((i + 1) / stops));
+    var label;
+    if (mode === "compare") {
+      // Diverging: middle is "no change", ends are "+X" / "-X"
+      var mid = Math.floor(stops / 2);
+      if (i > mid) {
+        var hiPos = Math.round(maxVal * ((i + 1 - mid) / mid));
+        var loPos = Math.round(maxVal * ((i - mid) / mid));
+        label = "+" + loPos + " to +" + hiPos;
+      } else if (i < mid) {
+        var hiNeg = Math.round(maxVal * ((mid - i - 1) / mid));
+        var loNeg = Math.round(maxVal * ((mid - i) / mid));
+        label = "-" + loNeg + " to -" + hiNeg;
+      } else {
+        label = "near zero";
+      }
+    } else {
+      label = lo.toLocaleString() + "-" + hi.toLocaleString();
+      if (i === stops - 1) label = hi.toLocaleString() + "+";
+    }
+    legendHTML += '<div class="legend-stop">' +
+      '<div class="legend-swatch" style="background:' + rgbStr(range[i]) + ';"></div>' +
+      '<span>' + label + '</span></div>';
+  }
+  document.getElementById("legend-stops").innerHTML = legendHTML;
+  document.querySelector(".legend-title").textContent = title;
+}
+
+// =============================================================================
 // BUILD LAYER
 // =============================================================================
-function buildLayer() {
+function buildLayers() {
   var step = tSteps[tIdx];
-  if (!step) return null;
-  var pts = getPointsForStep(step);
+  if (!step) return [];
+  var d = getStepData(step);
+  var pts = d.points;
 
-  if (mapStyle === "heat") {
-    return new deck.HeatmapLayer({
+  // Apply threshold filter
+  if (minThreshold > 0 && !d.isCompare) {
+    pts = pts.filter(function(p){return p.value >= minThreshold;});
+  }
+
+  currentMaxValue = d.maxVal;
+  updateLegend(d.maxVal, offMode);
+  updateThresholdSlider(d.maxVal, d.isCompare);
+
+  var layers = [];
+
+  if (mapStyle === "heat" && !d.isCompare) {
+    layers.push(new deck.HeatmapLayer({
       id: "heat",
       data: pts,
       getPosition: function(d) { return [d.lng, d.lat]; },
@@ -325,63 +648,124 @@ function buildLayer() {
       intensity: 1.2,
       threshold: 0.05,
       colorRange: colorRange(offMode),
-      updateTriggers: {
-        getWeight: [tIdx, offMode, excludeStations]
-      }
-    });
+      updateTriggers: { getWeight: [tIdx, offMode, excludeStations, minThreshold] }
+    }));
+  } else {
+    // For compare mode, separate positive and negative deltas so we can color them properly
+    if (d.isCompare) {
+      // Use ColumnLayer with explicit positioning
+      var maxAbs = d.maxVal || 1;
+      layers.push(new deck.ColumnLayer({
+        id: "compare-hex",
+        data: pts,
+        diskResolution: 6, radius: 130,
+        extruded: true,
+        getPosition: function(d) { return [d.lng, d.lat]; },
+        getElevation: function(d) {
+          return Math.pow(Math.abs(d.value) / maxAbs, 0.6) * 3500;
+        },
+        getFillColor: function(d) {
+          // -1 to +1 ratio
+          var ratio = d.value / maxAbs;
+          // Red for increase, green for decrease, gray near zero
+          if (Math.abs(ratio) < 0.05) return [180, 180, 180, 180];
+          if (ratio > 0) {
+            // Increase: red gradient
+            var t = Math.min(1, ratio);
+            return [180 + Math.round(75 * t), Math.round(50 + 50 * (1-t)), Math.round(50 + 30 * (1-t)), 230];
+          } else {
+            var t2 = Math.min(1, -ratio);
+            return [Math.round(50 + 90 * (1-t2)), 140 + Math.round(70 * t2), Math.round(60 + 30 * (1-t2)), 230];
+          }
+        },
+        material: { ambient: 0.6, diffuse: 0.7 },
+        pickable: true,
+        coverage: 0.92,
+        updateTriggers: { getElevation: [tIdx, excludeStations], getFillColor: [tIdx, excludeStations] },
+        onHover: function(info) { handleHover(info, step, "compare"); }
+      }));
+    } else {
+      layers.push(new deck.HexagonLayer({
+        id: "hex",
+        data: pts,
+        getPosition: function(d) { return [d.lng, d.lat]; },
+        getColorWeight: function(d) { return d.value; },
+        getElevationWeight: function(d) { return d.value; },
+        radius: 300,
+        elevationScale: 20,
+        extruded: true,
+        pickable: true,
+        coverage: 0.92,
+        colorRange: colorRange(offMode),
+        elevationRange: [0, 3500],
+        upperPercentile: 100,
+        material: { ambient: 0.6, diffuse: 0.7, shininess: 32 },
+        updateTriggers: {
+          getColorWeight: [tIdx, offMode, excludeStations, minThreshold],
+          getElevationWeight: [tIdx, offMode, excludeStations, minThreshold]
+        },
+        onHover: function(info) { handleHover(info, step, "hex"); }
+      }));
+    }
   }
 
-  // 3D Hex
-  return new deck.HexagonLayer({
-    id: "hex",
-    data: pts,
-    getPosition: function(d) { return [d.lng, d.lat]; },
-    getColorWeight: function(d) { return d.value; },
-    getElevationWeight: function(d) { return d.value; },
-    radius: 200,
-    elevationScale: 18,
-    extruded: true,
-    pickable: true,
-    coverage: 0.92,
-    colorRange: colorRange(offMode),
-    elevationRange: [0, 3500],
-    upperPercentile: 100,
-    material: { ambient: 0.6, diffuse: 0.7, shininess: 32 },
-    transitions: {
-      elevationScale: { duration: 400 }
-    },
-    updateTriggers: {
-      getColorWeight: [tIdx, offMode, excludeStations],
-      getElevationWeight: [tIdx, offMode, excludeStations]
-    },
-    onHover: function(info) {
-      var tt = document.getElementById("tooltip");
-      if (info.object) {
-        var count = info.object.elevationValue || info.object.colorValue || 0;
-        var step = tSteps[tIdx];
-        tt.innerHTML =
-          '<strong style="font-size:14px;font-weight:700;">'
-          + Math.round(count).toLocaleString() + ' assaults</strong><br>'
-          + '<span style="color:rgba(255,255,255,.5);font-size:11px;">'
-          + step.label + ' &#183; '
-          + (offMode==="felony"?"Felony":offMode==="misd"?"Misdemeanor":"Combined")
-          + '</span><br>'
-          + '<span style="color:rgba(255,255,255,.4);font-size:10px;">'
-          + 'in this 200m hexagon</span>';
-        var ttW = tt.offsetWidth || 200, ttH = tt.offsetHeight || 70;
-        var W = window.innerWidth, H = window.innerHeight;
-        var lx = info.x + 16, ty = info.y - ttH/2;
-        if (lx + ttW > W - 8) lx = info.x - ttW - 16;
-        if (ty < 4) ty = 4;
-        if (ty + ttH > H - 4) ty = H - ttH - 4;
-        tt.style.left = lx + "px";
-        tt.style.top = ty + "px";
-        tt.classList.add("visible");
-      } else {
-        tt.classList.remove("visible");
-      }
+  // Neighborhood labels
+  if (showLabels) {
+    layers.push(new deck.TextLayer({
+      id: "labels",
+      data: NEIGHBORHOOD_LABELS,
+      getPosition: function(d) { return [d.lng, d.lat]; },
+      getText: function(d) { return d.name; },
+      getSize: 11,
+      getColor: [255, 255, 255, 200],
+      getAngle: 0,
+      fontFamily: "halyard-text, Inter, Arial, sans-serif",
+      fontWeight: 700,
+      getTextAnchor: "middle",
+      getAlignmentBaseline: "center",
+      background: true,
+      getBackgroundColor: [5, 5, 7, 180],
+      backgroundPadding: [6, 3, 6, 3],
+      sizeUnits: "pixels",
+      pickable: false
+    }));
+  }
+
+  return layers;
+}
+
+function handleHover(info, step, mode) {
+  var tt = document.getElementById("tooltip");
+  if (info.object) {
+    var text;
+    if (mode === "compare") {
+      var o = info.object;
+      var d = o.value;
+      var sign = d > 0 ? "+" : "";
+      var color = d > 0 ? "#e7466d" : d < 0 ? "#3a8a3e" : "#999";
+      text = '<strong style="font-size:14px;font-weight:700;color:' + color + ';">' + sign + d.toLocaleString() + ' assaults</strong><br>'
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + (step.year-1) + ' YTD</span><br>'
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + (o.cur || 0).toLocaleString() + ' this year &middot; ' + (o.prior || 0).toLocaleString() + ' prior year</span>';
+    } else {
+      var count = info.object.elevationValue || info.object.colorValue || 0;
+      text = '<strong style="font-size:14px;font-weight:700;">' + Math.round(count).toLocaleString() + ' assaults</strong><br>'
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' &middot; '
+        + (offMode==="felony"?"Felony":offMode==="misd"?"Misdemeanor":"Combined") + '</span><br>'
+        + '<span style="color:rgba(255,255,255,.4);font-size:10px;">in this 300m hexagon</span>';
     }
-  });
+    tt.innerHTML = text;
+    var ttW = tt.offsetWidth || 200, ttH = tt.offsetHeight || 70;
+    var W = window.innerWidth, H = window.innerHeight;
+    var lx = info.x + 16, ty = info.y - ttH/2;
+    if (lx + ttW > W - 8) lx = info.x - ttW - 16;
+    if (ty < 4) ty = 4;
+    if (ty + ttH > H - 4) ty = H - ttH - 4;
+    tt.style.left = lx + "px";
+    tt.style.top = ty + "px";
+    tt.classList.add("visible");
+  } else {
+    tt.classList.remove("visible");
+  }
 }
 
 // =============================================================================
@@ -389,67 +773,117 @@ function buildLayer() {
 // =============================================================================
 function updateLayer() {
   if (!deckgl) return;
-  deckgl.setProps({ layers: [buildLayer()] });
+  deckgl.setProps({ layers: buildLayers() });
   updateUI();
   updateChart();
+  updateRankings(tSteps[tIdx]);
 }
 
 function updateUI() {
   var step = tSteps[tIdx];
   if (!step) return;
   document.getElementById("year-num").textContent = step.label;
-  document.getElementById("year-sub").textContent = "ANNUAL TOTAL";
+  if (offMode === "compare") {
+    document.getElementById("year-sub").textContent =
+      "YTD vs " + (step.year - 1) + " YTD";
+  } else {
+    document.getElementById("year-sub").textContent = "QUARTERLY TOTAL";
+  }
   document.getElementById("year-num").classList.toggle("playing", playing);
   document.getElementById("time-slider").value = String(tIdx);
   document.getElementById("time-slider").classList.toggle("playing", playing);
   document.getElementById("play-btn").innerHTML = playing ? "&#9646;&#9646;" : "&#9654;";
   document.getElementById("play-btn").classList.toggle("playing", playing);
-  var c = getCitywideTotals(step);
-  var shown = offMode==="felony" ? c.fel : offMode==="misd" ? c.misd : c.total;
-  if (offMode === "combined") {
+
+  var d = getStepData(step);
+  if (offMode === "compare") {
+    var cur = d.totals.cur, prior = d.totals.prior;
+    var delta = cur - prior;
+    var pct = prior > 0 ? ((delta / prior) * 100).toFixed(1) : "—";
+    var sign = delta > 0 ? "+" : "";
+    var color = delta > 0 ? "#e7466d" : "#3a8a3e";
+    document.getElementById("year-counts").innerHTML =
+      '<strong style="color:' + color + ';">' + sign + delta.toLocaleString() +
+      '</strong> change &nbsp;(' + sign + pct + '%) &nbsp;&middot;&nbsp; ' +
+      cur.toLocaleString() + ' vs ' + prior.toLocaleString() + ' prior';
+  } else if (offMode === "combined") {
+    var c = d.totals;
     document.getElementById("year-counts").innerHTML =
       '<strong>' + c.total.toLocaleString() + '</strong> total &nbsp;&middot;&nbsp;'
       + '<span style="color:#ff7c53;"> ' + c.fel.toLocaleString() + ' felony</span> &nbsp;&middot;&nbsp;'
       + '<span style="color:#9b9fbc;"> ' + c.misd.toLocaleString() + ' misd.</span>';
   } else {
+    var c2 = d.totals;
+    var shown = offMode === "felony" ? c2.fel : c2.misd;
     document.getElementById("year-counts").innerHTML =
       '<strong>' + shown.toLocaleString() + '</strong> '
-      + (offMode==="felony" ? "felony" : "misdemeanor") + ' assaults citywide';
+      + (offMode === "felony" ? "felony" : "misdemeanor") + ' assaults citywide';
+  }
+}
+
+function updateThresholdSlider(maxVal, isCompare) {
+  var sl = document.getElementById("threshold-slider");
+  var label = document.getElementById("threshold-val");
+  if (isCompare) {
+    sl.disabled = true;
+    sl.value = 0;
+    minThreshold = 0;
+    label.textContent = "n/a";
+  } else {
+    sl.disabled = false;
+    sl.max = Math.max(maxVal, 1);
+    if (minThreshold > maxVal) {
+      minThreshold = 0;
+      sl.value = 0;
+    }
+    label.textContent = minThreshold + "+";
   }
 }
 
 // =============================================================================
 // CONTROLS
 // =============================================================================
-function setViewMode(mode, btn) {
-  // Currently we only support yearly. Monthly would need different data.
-  if (mode === "monthly") {
-    alert("Monthly view requires additional data. Yearly view only for now.");
+function setMapStyle(style, btn) {
+  if (offMode === "compare" && style === "heat") {
+    // Heatmap doesn't work well for compare mode
     return;
   }
-  viewMode = mode;
-  stopPlay();
-  document.querySelectorAll(".view-pills .pill-sm").forEach(function(b){b.classList.remove("active");});
-  btn.classList.add("active");
-}
-
-function setMapStyle(style, btn) {
   mapStyle = style;
-  document.querySelectorAll(".top-right .tr-group:nth-child(2) .pill-sm").forEach(function(b){b.classList.remove("active");});
+  document.querySelectorAll(".tr-group:nth-child(1) .pill-sm").forEach(function(b){b.classList.remove("active");});
   btn.classList.add("active");
   updateLayer();
 }
 
-function toggleStations(checked) {
-  excludeStations = checked;
-  updateLayer();
-}
+function toggleStations(checked) { excludeStations = checked; updateLayer(); }
+function toggleLabels(checked) { showLabels = checked; updateLayer(); }
 
 function setOffense(mode, btn) {
   offMode = mode;
   document.querySelectorAll(".pill-group .pill-btn").forEach(function(b){b.classList.remove("active");});
   btn.classList.add("active");
+  if (mode === "compare") btn.classList.add("compare");
+  else if (mode === "felony") btn.classList.add("fel");
+  else if (mode === "misd") btn.classList.add("misd");
   updateLayer();
+}
+
+function setRankView(view, btn) {
+  rankView = view;
+  document.querySelectorAll(".sp-tab").forEach(function(t){t.classList.remove("active");});
+  btn.classList.add("active");
+  updateRankings(tSteps[tIdx]);
+}
+
+function toggleSidePanel(show) {
+  var panel = document.getElementById("side-panel");
+  var btn = document.getElementById("sp-toggle");
+  if (show) {
+    panel.classList.remove("collapsed");
+    btn.style.display = "none";
+  } else {
+    panel.classList.add("collapsed");
+    btn.style.display = "block";
+  }
 }
 
 function setSpeed(ms, btn) {
@@ -481,11 +915,8 @@ function startRotate() {
     if (!autoRot) return;
     rotBearing = (rotBearing + 0.12) % 360;
     if (deckgl) deckgl.setProps({
-      initialViewState: {
-        longitude: IV.longitude, latitude: IV.latitude,
-        zoom: IV.zoom, pitch: IV.pitch,
-        bearing: rotBearing, transitionDuration: 0
-      }
+      initialViewState: { longitude: IV.longitude, latitude: IV.latitude,
+        zoom: IV.zoom, pitch: IV.pitch, bearing: rotBearing, transitionDuration: 0 }
     });
     rotRAF = requestAnimationFrame(frame);
   }
@@ -500,17 +931,20 @@ function resetView() {
   stopRotate();
   rotBearing = -15;
   if (deckgl) deckgl.setProps({
-    initialViewState: {
-      longitude: IV.longitude, latitude: IV.latitude,
-      zoom: IV.zoom, pitch: IV.pitch,
-      bearing: -15, transitionDuration: 800
-    }
+    initialViewState: { longitude: IV.longitude, latitude: IV.latitude,
+      zoom: IV.zoom, pitch: IV.pitch, bearing: -15, transitionDuration: 800 }
   });
 }
 
 document.getElementById("time-slider").addEventListener("input", function(e) {
   stopPlay();
   tIdx = parseInt(e.target.value);
+  updateLayer();
+});
+
+document.getElementById("threshold-slider").addEventListener("input", function(e) {
+  minThreshold = parseInt(e.target.value);
+  document.getElementById("threshold-val").textContent = minThreshold + "+";
   updateLayer();
 });
 
@@ -526,8 +960,15 @@ function buildChartData() {
   var years = Object.keys(GRID_BY_YEAR).map(Number).sort(function(a,b){return a-b;});
   var fel = [], misd = [], total = [];
   for (var i = 0; i < years.length; i++) {
-    var c = getCitywideTotals({ year: years[i] });
-    fel.push(c.fel); misd.push(c.misd); total.push(c.total);
+    var rows = GRID_BY_YEAR[years[i]] || [];
+    var f = 0, m = 0;
+    for (var j = 0; j < rows.length; j++) {
+      var r = rows[j];
+      if (excludeStations && r.isStation) continue;
+      if (r.offense === "felony") f += r.n;
+      else if (r.offense === "misd") m += r.n;
+    }
+    fel.push(f); misd.push(m); total.push(f + m);
   }
   return { years: years, fel: fel, misd: misd, total: total };
 }
@@ -540,25 +981,16 @@ function initChart() {
     data: {
       labels: cd.years.map(String),
       datasets: [
-        {
-          label: "Combined total", data: cd.total,
-          borderColor: "rgba(255,255,255,.5)",
-          backgroundColor: "rgba(255,124,83,.07)",
+        { label: "Combined total", data: cd.total,
+          borderColor: "rgba(255,255,255,.5)", backgroundColor: "rgba(255,124,83,.07)",
           borderWidth: 2,
           pointBackgroundColor: cd.years.map(function(y){return y===maxYear?"#ff7c53":"rgba(255,255,255,.1)";}),
           pointRadius: cd.years.map(function(y){return y===maxYear?8:2;}),
-          pointHoverRadius: 6, tension: .25, fill: true
-        },
-        {
-          label: "Felony", data: cd.fel,
-          borderColor: "rgba(255,124,83,.55)",
-          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false
-        },
-        {
-          label: "Misdemeanor", data: cd.misd,
-          borderColor: "rgba(57,72,130,.55)",
-          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false
-        }
+          pointHoverRadius: 6, tension: .25, fill: true },
+        { label: "Felony", data: cd.fel, borderColor: "rgba(255,124,83,.55)",
+          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false },
+        { label: "Misdemeanor", data: cd.misd, borderColor: "rgba(57,72,130,.55)",
+          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false }
       ]
     },
     options: {
@@ -572,11 +1004,9 @@ function initChart() {
       },
       plugins: {
         legend: { display: true, labels: { color: "rgba(255,255,255,.4)", font: { size: 10 }, boxWidth: 12, padding: 16 } },
-        tooltip: {
-          backgroundColor: "rgba(5,5,7,.95)", borderColor: "rgba(255,124,83,.35)", borderWidth: 1,
+        tooltip: { backgroundColor: "rgba(5,5,7,.95)", borderColor: "rgba(255,124,83,.35)", borderWidth: 1,
           titleColor: "#fff", bodyColor: "rgba(255,255,255,.65)",
-          callbacks: { label: function(ctx) { return ctx.dataset.label + ": " + ctx.parsed.y.toLocaleString(); } }
-        }
+          callbacks: { label: function(ctx) { return ctx.dataset.label + ": " + ctx.parsed.y.toLocaleString(); } } }
       }
     }
   });
@@ -587,7 +1017,6 @@ function updateChart() {
   var step = tSteps[tIdx];
   if (!step) return;
   var cy = step.year;
-  // Recompute totals (since station exclusion may have changed)
   var cd = buildChartData();
   tChart.data.datasets[0].data = cd.total;
   tChart.data.datasets[1].data = cd.fel;
@@ -598,7 +1027,7 @@ function updateChart() {
 }
 
 // =============================================================================
-// INIT MAP
+// INIT
 // =============================================================================
 function initMap() {
   deckgl = new deck.DeckGL({
@@ -623,9 +1052,6 @@ function initMap() {
   }, 700);
 }
 
-// =============================================================================
-// BOOT
-// =============================================================================
 async function boot() {
   var bar = document.getElementById("ld-bar");
   var sub = document.getElementById("ld-sub");
@@ -643,10 +1069,7 @@ async function boot() {
     parseGrid(raw.grid);
     sub.textContent = "Building map...";
     bar.style.width = "95%";
-    setTimeout(function() {
-      bar.style.width = "100%";
-      setTimeout(initMap, 200);
-    }, 200);
+    setTimeout(function() { bar.style.width = "100%"; setTimeout(initMap, 200); }, 200);
   } catch(e) {
     console.error("Boot failed:", e);
     document.getElementById("loading").style.display = "none";
