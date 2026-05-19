@@ -613,50 +613,44 @@ function colorRange(mode) {
 // =============================================================================
 function rgbStr(c) { return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")"; }
 function updateLegend(maxVal, mode) {
-  var range = colorRange(mode);
-  var stops = range.length;
   var legendHTML = "";
   var title = "Assault count";
-  if (mode === "compare") title = "Change vs prior YTD";
   var subtitle = "";
-  if (mode === "compare") subtitle = "Each hexagon shows net change across 400m";
 
-  // Build threshold strings
-  for (var i = stops - 1; i >= 0; i--) {
-    var lo = Math.round(maxVal * (i / stops));
-    var hi = Math.round(maxVal * ((i + 1) / stops));
-    var label;
-    if (mode === "compare") {
-      // 7-stop diverging scale: [0]=deepest decrease, [3]=no change, [6]=deepest increase
-      // We're iterating i from stops-1 down to 0 so legend reads top-to-bottom: increase → no change → decrease
-      var mid = Math.floor(stops / 2);  // 3 for 7 stops
-      if (i === mid) {
-        label = "No change";
-      } else if (i > mid) {
-        // Above middle = increase. Stops [4,5,6] map to thirds of positive range.
-        var step = (i - mid);            // 1, 2, 3
-        var totalStepsPos = stops - 1 - mid;  // 3
-        var hiPos = Math.round(maxVal * (step / totalStepsPos));
-        var loPos = Math.round(maxVal * ((step - 1) / totalStepsPos));
-        label = "+" + loPos.toLocaleString() + " to +" + hiPos.toLocaleString();
-        if (step === totalStepsPos) label = "+" + loPos.toLocaleString() + " or more";
-      } else {
-        // Below middle = decrease.
-        var stepD = (mid - i);            // 1, 2, 3
-        var totalStepsNeg = mid;
-        var hiNeg = Math.round(maxVal * (stepD / totalStepsNeg));
-        var loNeg = Math.round(maxVal * ((stepD - 1) / totalStepsNeg));
-        label = "−" + loNeg.toLocaleString() + " to −" + hiNeg.toLocaleString();
-        if (stepD === totalStepsNeg) label = "−" + loNeg.toLocaleString() + " or more";
-      }
-    } else {
-      label = lo.toLocaleString() + "-" + hi.toLocaleString();
-      if (i === stops - 1) label = hi.toLocaleString() + "+";
+  if (mode === "compare") {
+    title = "Change vs prior YTD";
+    subtitle = "Each hexagon shows net change across 400m";
+    // Hard-coded bands that match compareColorForDelta() exactly
+    var bands = [
+      { color: [195, 40, 40],    label: "+5 or more" },
+      { color: [225, 130, 110],  label: "+3 to +4" },
+      { color: [240, 200, 195],  label: "+1 to +2" },
+      { color: [185, 185, 185],  label: "No change" },
+      { color: [180, 220, 195],  label: "−1 to −2" },
+      { color: [110, 180, 130],  label: "−3 to −4" },
+      { color: [30, 110, 50],    label: "−5 or more" },
+      { color: [55, 55, 60],     label: "No assaults" },
+    ];
+    for (var b = 0; b < bands.length; b++) {
+      legendHTML += '<div class="legend-stop">' +
+        '<div class="legend-swatch" style="background:' + rgbStr(bands[b].color) + ';"></div>' +
+        '<span>' + bands[b].label + '</span></div>';
     }
-    legendHTML += '<div class="legend-stop">' +
-      '<div class="legend-swatch" style="background:' + rgbStr(range[i]) + ';"></div>' +
-      '<span>' + label + '</span></div>';
+  } else {
+    // Totals mode — color scale with numeric thresholds
+    var range = colorRange(mode);
+    var stops = range.length;
+    for (var i = stops - 1; i >= 0; i--) {
+      var lo = Math.round(maxVal * (i / stops));
+      var hi = Math.round(maxVal * ((i + 1) / stops));
+      var label = lo.toLocaleString() + "-" + hi.toLocaleString();
+      if (i === stops - 1) label = hi.toLocaleString() + "+";
+      legendHTML += '<div class="legend-stop">' +
+        '<div class="legend-swatch" style="background:' + rgbStr(range[i]) + ';"></div>' +
+        '<span>' + label + '</span></div>';
+    }
   }
+
   document.getElementById("legend-stops").innerHTML = legendHTML;
   document.querySelector(".legend-title").textContent = title;
   // Add or remove subtitle
@@ -673,6 +667,126 @@ function updateLegend(maxVal, mode) {
     existing.textContent = subtitle;
   } else if (existing) {
     existing.remove();
+  }
+}
+
+// =============================================================================
+// MANUAL HEX BINNING FOR COMPARE MODE
+// =============================================================================
+// Pre-bin source points into a hex grid in JavaScript so we have full control.
+// HexagonLayer's internal binning was dropping some bins and using soft color
+// interpolation that didn't match the legend bands.
+
+// Convert meters to lat/lng deltas at NYC latitude
+var METERS_PER_DEG_LAT = 111000;
+var NYC_LAT = 40.71;
+var METERS_PER_DEG_LNG = 111000 * Math.cos(NYC_LAT * Math.PI / 180);
+
+function binPointsToHexGrid(points, radiusMeters) {
+  // Use a flat-top hex grid. Hex width = 2 * radius, hex height = sqrt(3) * radius.
+  // For a hexagonal grid, the horizontal step is 1.5 * radius and vertical step is
+  // sqrt(3) * radius (with alternating offset).
+  // To bin a point into a hex, we use offset coordinates derived from cube coords.
+  var hexWidthM = 2 * radiusMeters;
+  var hexHeightM = Math.sqrt(3) * radiusMeters;
+  // Convert to lat/lng deltas
+  var hexWidthLng = hexWidthM / METERS_PER_DEG_LNG;
+  var hexHeightLat = hexHeightM / METERS_PER_DEG_LAT;
+
+  var bins = {};
+  for (var i = 0; i < points.length; i++) {
+    var p = points[i];
+    // Snap into a hex bin using axial coordinates
+    var x = p.lng / (hexWidthLng * 0.75);
+    var y = p.lat / hexHeightLat;
+    var q = Math.round(x);
+    var r = Math.round(y - (q & 1) * 0.5);
+    var key = q + ":" + r;
+    if (!bins[key]) {
+      var binLng = q * hexWidthLng * 0.75;
+      var binLat = (r + (q & 1) * 0.5) * hexHeightLat;
+      bins[key] = {
+        key: key, lng: binLng, lat: binLat,
+        delta: 0, cur: 0, prior: 0
+      };
+    }
+    bins[key].delta += (p.value || 0);
+    bins[key].cur   += (p.cur   || 0);
+    bins[key].prior += (p.prior || 0);
+  }
+  var arr = [];
+  for (var k in bins) arr.push(bins[k]);
+  return arr;
+}
+
+// Cache of the NYC "universe" — every hex that has had at least one assault
+// across all 2006-2026 data. Hexes in this set but not in the current period
+// represent "no data in this period" rather than "outside NYC."
+var NYC_UNIVERSE_CACHE = null;
+
+function buildNYCUniverse(radiusMeters) {
+  if (NYC_UNIVERSE_CACHE) return NYC_UNIVERSE_CACHE;
+  // Pull every distinct lng/lat across all years (respecting station exclusion?
+  // No — we want the geographic universe regardless of station status)
+  var seenCells = {};
+  var allPoints = [];
+  for (var stepKey in GRID_BY_STEP) {
+    var rows = GRID_BY_STEP[stepKey];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r.isStation) continue; // exclude precinct station artifacts from the universe
+      var k = r.lng + "," + r.lat;
+      if (!seenCells[k]) {
+        seenCells[k] = true;
+        allPoints.push({ lng: r.lng, lat: r.lat, value: 0, cur: 0, prior: 0 });
+      }
+    }
+  }
+  NYC_UNIVERSE_CACHE = binPointsToHexGrid(allPoints, radiusMeters);
+  return NYC_UNIVERSE_CACHE;
+}
+
+// Sharp color bands keyed to legend exactly.
+function compareColorForDelta(delta) {
+  if (delta >= 5)  return [195, 40, 40, 230];   // +5 or more — deep red
+  if (delta >= 3)  return [225, 130, 110, 230]; // +3 to +4 — medium red
+  if (delta >= 1)  return [240, 200, 195, 220]; // +1 to +2 — light pink
+  if (delta === 0) return [185, 185, 185, 200]; // exactly 0 — light gray
+  if (delta >= -2) return [180, 220, 195, 220]; // -1 to -2 — light green
+  if (delta >= -4) return [110, 180, 130, 230]; // -3 to -4 — medium green
+  return [30, 110, 50, 230];                    // -5 or less — deep green
+}
+
+function handleHoverCompare(info, step) {
+  var tt = document.getElementById("tooltip");
+  if (info.object) {
+    var b = info.object;
+    var text;
+    if (b.noData) {
+      text = '<strong style="font-size:14px;font-weight:700;color:#888;">No assaults</strong><br>'
+        + '<span style="color:rgba(255,255,255,.4);font-size:11px;">'
+        + 'Neither ' + step.label + ' nor ' + (step.year-1) + ' Q' + step.quarter + ' had any complaints in this area</span>';
+    } else {
+      var d = b.delta;
+      var sign = d > 0 ? "+" : "";
+      var color = d > 0 ? "#e7466d" : d < 0 ? "#3a8a3e" : "#bbb";
+      var headerText = d === 0 ? "No change" : sign + d.toLocaleString() + " assaults";
+      text = '<strong style="font-size:14px;font-weight:700;color:' + color + ';">' + headerText + '</strong><br>'
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + (step.year-1) + ' Q' + step.quarter + ' YTD</span><br>'
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + b.cur.toLocaleString() + ' this period &middot; ' + b.prior.toLocaleString() + ' prior period</span>';
+    }
+    tt.innerHTML = text;
+    var ttW = tt.offsetWidth || 200, ttH = tt.offsetHeight || 70;
+    var W = window.innerWidth, H = window.innerHeight;
+    var lx = info.x + 16, ty = info.y - ttH/2;
+    if (lx + ttW > W - 8) lx = info.x - ttW - 16;
+    if (ty < 4) ty = 4;
+    if (ty + ttH > H - 4) ty = H - ttH - 4;
+    tt.style.left = lx + "px";
+    tt.style.top = ty + "px";
+    tt.classList.add("visible");
+  } else {
+    tt.classList.remove("visible");
   }
 }
 
@@ -713,30 +827,47 @@ function buildLayers() {
     }));
   } else {
     if (d.isCompare) {
-      // HexagonLayer bins source cells into clean non-overlapping hexagons.
-      // We aggressively compress the colorDomain so that even modest changes
-      // get visible color. Anything beyond compressedMax saturates to the
-      // deepest red/green. This makes the map dramatically more legible
-      // since most hex bins have modest deltas, not extreme ones.
-      var compressedMax = Math.max(8, Math.round(d.maxVal * 0.18));
-      layers.push(new deck.HexagonLayer({
+      // Manually pre-bin into a 400m hex grid for full control.
+      var HEX_RADIUS_METERS = 400;
+      var bins = binPointsToHexGrid(pts, HEX_RADIUS_METERS);
+      // Build a key index of bins with actual data
+      var binIndex = {};
+      for (var bi = 0; bi < bins.length; bi++) binIndex[bins[bi].key] = bins[bi];
+      // Get the full NYC universe — every hex that has had assaults at some point
+      var universe = buildNYCUniverse(HEX_RADIUS_METERS);
+      // Build the final draw list: every universe hex, with delta from binIndex
+      // if available, otherwise marked as "no data this period."
+      var drawBins = [];
+      for (var ui = 0; ui < universe.length; ui++) {
+        var u = universe[ui];
+        if (binIndex[u.key]) {
+          drawBins.push(binIndex[u.key]);
+        } else {
+          // No data this period — neither current nor prior. Show as dark gray.
+          drawBins.push({
+            key: u.key, lng: u.lng, lat: u.lat,
+            delta: 0, cur: 0, prior: 0, noData: true
+          });
+        }
+      }
+      layers.push(new deck.ColumnLayer({
         id: "compare-hex",
-        data: pts,
-        getPosition: function(d) { return [d.lng, d.lat]; },
-        getColorWeight: function(d) { return d.value; },
-        colorAggregation: "SUM",
-        radius: 400,
+        data: drawBins,
+        diskResolution: 6,
+        radius: HEX_RADIUS_METERS,
         extruded: false,
-        pickable: true,
-        coverage: 1.0,
-        lowerPercentile: 0,
-        upperPercentile: 100,
-        colorRange: colorRange("compare"),
-        colorDomain: [-compressedMax, compressedMax],
-        updateTriggers: {
-          getColorWeight: [tIdx, excludeStations]
+        getPosition: function(b) { return [b.lng, b.lat]; },
+        getFillColor: function(b) {
+          if (b.noData) return [55, 55, 60, 160]; // dark gray for empty hexes
+          return compareColorForDelta(b.delta);
         },
-        onHover: function(info) { handleHover(info, step, "compare"); }
+        getLineColor: [0, 0, 0, 0],
+        pickable: true,
+        coverage: 0.96,
+        updateTriggers: {
+          getFillColor: [tIdx, excludeStations]
+        },
+        onHover: function(info) { handleHoverCompare(info, step); }
       }));
     } else {
       layers.push(new deck.HexagonLayer({
