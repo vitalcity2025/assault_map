@@ -414,17 +414,15 @@ function getStepData(step) {
 
     var points = [];
     var maxAbsDelta = 1;
-    // Filter: only show hexagons where the absolute change is meaningful
-    // (5+ assault increase or decrease). Small changes are statistical noise
-    // and clutter the map.
-    var COMPARE_MIN_DELTA = 5;
+    // Let HexagonLayer sum nearby source cells into hex bins. We don't filter
+    // at this stage because two adjacent small-delta cells can sum to a
+    // meaningful bin-level change.
     for (var key in allKeys) {
       var parts = key.split(",");
       var lng = +parts[0], lat = +parts[1];
       var c = curAgg[key] || 0;
       var p = priorAgg[key] || 0;
       var delta = c - p;
-      if (Math.abs(delta) < COMPARE_MIN_DELTA) continue;
       if (Math.abs(delta) > maxAbsDelta) maxAbsDelta = Math.abs(delta);
       points.push({lng:lng, lat:lat, value:delta, cur:c, prior:p});
     }
@@ -613,7 +611,7 @@ function updateLegend(maxVal, mode) {
   var title = "Assault count";
   if (mode === "compare") title = "Change vs prior YTD";
   var subtitle = "";
-  if (mode === "compare") subtitle = "Only hexagons with ±5 or more change shown";
+  if (mode === "compare") subtitle = "Each hexagon shows net change across 400m";
 
   // Build threshold strings
   for (var i = stops - 1; i >= 0; i--) {
@@ -703,55 +701,25 @@ function buildLayers() {
       updateTriggers: { getWeight: [tIdx, offMode, excludeStations, minThreshold] }
     }));
   } else {
-    // For compare mode, separate positive and negative deltas so we can color them properly
     if (d.isCompare) {
-      // Flat hexagons — color tells the story, height would add visual noise.
-      // Bigger hexagons (400m) aggregate up small noise into meaningful units.
-      // Volume threshold filters out cells with too little data to be meaningful.
+      // Use HexagonLayer to properly bin source cells into clean non-overlapping hexagons.
+      // getColorWeight sums deltas across all source cells that fall in each hex bin.
+      // colorDomain pinned to symmetric range so zero falls in the middle of the color scale.
       var maxAbs = d.maxVal || 1;
-      layers.push(new deck.ColumnLayer({
+      layers.push(new deck.HexagonLayer({
         id: "compare-hex",
         data: pts,
-        diskResolution: 6, radius: 400,
-        extruded: false,
         getPosition: function(d) { return [d.lng, d.lat]; },
-        getFillColor: function(d) {
-          var delta = d.value;
-          // Normalize against max for color intensity, with sqrt compression
-          // so larger changes really stand out
-          var ratio = delta / maxAbs;
-          var t = Math.sign(ratio) * Math.pow(Math.abs(ratio), 0.5);
-
-          // 7-stop diverging scale
-          var stops = [
-            [-1.0, [40, 130, 60]],
-            [-0.5, [120, 190, 140]],
-            [-0.1, [200, 230, 210]],
-            [ 0.0, [240, 240, 240]],
-            [ 0.1, [240, 215, 210]],
-            [ 0.5, [225, 130, 110]],
-            [ 1.0, [200, 50, 50]]
-          ];
-          for (var i = 1; i < stops.length; i++) {
-            var t0 = stops[i-1][0], c0 = stops[i-1][1];
-            var t1 = stops[i][0],   c1 = stops[i][1];
-            if (t <= t1) {
-              var u = (t - t0) / (t1 - t0);
-              return [
-                Math.round(c0[0] + (c1[0]-c0[0]) * u),
-                Math.round(c0[1] + (c1[1]-c0[1]) * u),
-                Math.round(c0[2] + (c1[2]-c0[2]) * u),
-                220
-              ];
-            }
-          }
-          return [200, 50, 50, 220];
-        },
-        getLineColor: [0, 0, 0, 0],
+        getColorWeight: function(d) { return d.value; },
+        colorAggregation: "SUM",
+        radius: 400,
+        extruded: false,
         pickable: true,
         coverage: 0.92,
+        colorRange: colorRange("compare"),
+        colorDomain: [-maxAbs, maxAbs],
         updateTriggers: {
-          getFillColor: [tIdx, excludeStations]
+          getColorWeight: [tIdx, excludeStations]
         },
         onHover: function(info) { handleHover(info, step, "compare"); }
       }));
