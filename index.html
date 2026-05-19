@@ -855,6 +855,59 @@ function binPointsToHexGrid(points, radiusMeters) {
 // represent "no data in this period" rather than "outside NYC."
 var NYC_UNIVERSE_CACHE = null;
 
+// Cache of the global max hex-bin value across ALL years and quarters
+// for each offense mode and granularity. Used so the legend and elevation
+// scales stay CONSTANT across time, making the animation meaningful.
+// Keys: "combined-q", "felony-q", "misd-q", "combined-a", "felony-a", "misd-a"
+// Two binning radii used in the UI: 110m source cells need to be aggregated
+// to the 300m hex grid used by HexagonLayer. We pre-compute the max bin sum.
+var GLOBAL_MAX_CACHE = {};
+
+function getGlobalMax(offenseMode, isAnnual) {
+  var cacheKey = offenseMode + "-" + (isAnnual ? "a" : "q");
+  if (GLOBAL_MAX_CACHE[cacheKey] !== undefined) return GLOBAL_MAX_CACHE[cacheKey];
+
+  // For each step we have (year-quarter or year), aggregate the 110m source
+  // cells into a coarse grid that approximates the 300m hex bins HexagonLayer
+  // would create. We use a simple 0.003-degree (~330m) grid for this.
+  var stepKeys;
+  if (isAnnual) {
+    stepKeys = Object.keys(GRID_BY_YEAR);
+  } else {
+    stepKeys = Object.keys(GRID_BY_STEP);
+  }
+
+  var globalMax = 1;
+  for (var s = 0; s < stepKeys.length; s++) {
+    var key = stepKeys[s];
+    var rows = isAnnual ? (GRID_BY_YEAR[key] || []) : (GRID_BY_STEP[key] || []);
+
+    // Aggregate rows to a coarse grid matching the 300m HexagonLayer bins.
+    // Use 3-decimal lng/lat to match the source data resolution; bin a 3x3
+    // grid of source cells to roughly approximate the hex bin sum.
+    var binAgg = {};
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      // Respect default station-exclusion in the universal max calculation,
+      // since users default to excluding them. This keeps spike heights
+      // intuitive on first load.
+      if (r.isStation) continue;
+      if (offenseMode === "felony" && r.offense !== "felony") continue;
+      if (offenseMode === "misd"   && r.offense !== "misd")   continue;
+      // Approximate hex binning by rounding to ~330m (about 0.003° at NYC lat).
+      var bLng = Math.round(r.lng * 333) / 333;
+      var bLat = Math.round(r.lat * 333) / 333;
+      var bKey = bLng + "," + bLat;
+      binAgg[bKey] = (binAgg[bKey] || 0) + r.n;
+    }
+    for (var k in binAgg) {
+      if (binAgg[k] > globalMax) globalMax = binAgg[k];
+    }
+  }
+  GLOBAL_MAX_CACHE[cacheKey] = globalMax;
+  return globalMax;
+}
+
 function buildNYCUniverse(radiusMeters) {
   if (NYC_UNIVERSE_CACHE) return NYC_UNIVERSE_CACHE;
   // Pull every distinct lng/lat across all years (respecting station exclusion?
@@ -936,15 +989,25 @@ function buildLayers() {
   }
 
   currentMaxValue = d.maxVal;
-  // In compare mode, use the same compressed max we use for the layer
+  // For the legend in compare mode, use the same compressed max we use for the layer
   // so legend labels match what's actually drawn.
-  var legendMax = d.isCompare ? Math.max(8, Math.round(d.maxVal * 0.18)) : d.maxVal;
+  // For totals mode, use the GLOBAL max across all years so the legend (and
+  // the underlying color/elevation scales) stay constant across time. This is
+  // critical for the animation to be meaningful — a "red" hex in 2008 must
+  // mean the same thing as a "red" hex in 2026.
+  var legendMax;
+  if (d.isCompare) {
+    legendMax = Math.max(8, Math.round(d.maxVal * 0.18));
+  } else {
+    legendMax = getGlobalMax(offMode, granularity === "annual");
+  }
   updateLegend(legendMax, offMode);
   updateThresholdSlider(d.maxVal, d.isCompare);
 
   var layers = [];
 
   if (mapStyle === "heat" && !d.isCompare) {
+    var heatGlobalMax = getGlobalMax(offMode, granularity === "annual");
     layers.push(new deck.HeatmapLayer({
       id: "heat",
       data: pts,
@@ -956,6 +1019,9 @@ function buildLayers() {
       // Always use the full combined heat scale (blue → cyan → green → yellow → orange → red)
       // regardless of offense type. The colors carry density, not category.
       colorRange: colorRange("combined"),
+      // Pin colorDomain to the global max so a "red" patch in 2008 means the
+      // same density as a "red" patch in 2026.
+      colorDomain: [0, heatGlobalMax],
       updateTriggers: { getWeight: [tIdx, offMode, excludeStations, minThreshold] }
     }));
   } else {
@@ -1003,6 +1069,7 @@ function buildLayers() {
         onHover: function(info) { handleHoverCompare(info, step); }
       }));
     } else {
+      var globalMax = getGlobalMax(offMode, granularity === "annual");
       layers.push(new deck.HexagonLayer({
         id: "hex",
         data: pts,
@@ -1016,6 +1083,11 @@ function buildLayers() {
         coverage: 0.92,
         colorRange: colorRange(offMode),
         elevationRange: [0, 1500],
+        // Pin domains to global max so spike heights and colors mean the same
+        // thing across every year/quarter. Without this, deck.gl rescales every
+        // frame and the animation becomes visually meaningless.
+        colorDomain: [0, globalMax],
+        elevationDomain: [0, globalMax],
         upperPercentile: 100,
         material: { ambient: 0.6, diffuse: 0.7, shininess: 32 },
         updateTriggers: {
@@ -1287,7 +1359,13 @@ function setMapStyle(style, btn) {
   updateLayer();
 }
 
-function toggleStations(checked) { excludeStations = checked; updateLayer(); }
+function toggleStations(checked) {
+  excludeStations = checked;
+  // Note: GLOBAL_MAX_CACHE is computed with stations always excluded (the
+  // common case), so toggling the user's exclusion preference doesn't
+  // invalidate it. Keeps the scale stable.
+  updateLayer();
+}
 function toggleLabels(checked) { showLabels = checked; updateLayer(); }
 
 function setOffense(mode, btn) {
