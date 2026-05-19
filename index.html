@@ -176,7 +176,7 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 @media (max-width:700px){
   .rankings-grid{grid-template-columns:1fr;gap:24px;}
 }
-.filter-panel{position:absolute;left:20px;bottom:340px;z-index:10;
+.filter-panel{position:absolute;left:20px;top:160px;z-index:10;
   background:rgba(5,5,7,.92);padding:14px 16px;
   border-left:2px solid var(--yellow);min-width:240px;}
 .fp-title{font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow);margin-bottom:10px;}
@@ -189,8 +189,10 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 .filter-panel input[type=range]::-webkit-slider-thumb{background:var(--yellow);box-shadow:0 0 8px rgba(221,228,76,.4);}
 .filter-panel input[type=range]:disabled{opacity:.3;}
 
-/* Improved legend with actual counts */
-.legend{position:absolute;left:20px;bottom:180px;z-index:10;background:rgba(5,5,7,.85);padding:10px 12px;border-left:2px solid rgba(255,255,255,.08);min-width:160px;}
+/* Legend — positioned below the filter panel, anchored to bottom so it doesn't
+   overlap with the time controls. Top position is calculated to leave room
+   for filter panel + gap. */
+.legend{position:absolute;left:20px;top:330px;z-index:10;background:rgba(5,5,7,.85);padding:10px 12px;border-left:2px solid rgba(255,255,255,.08);min-width:160px;}
 .legend-title{font-weight:700;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;}
 .legend-stops{display:flex;flex-direction:column;gap:4px;}
 .legend-stop{display:flex;align-items:center;gap:8px;font-size:10px;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;}
@@ -1053,7 +1055,6 @@ function buildLayers() {
   var layers = [];
 
   if (mapStyle === "heat" && !d.isCompare) {
-    var heatGlobalMax = getHeatmapMax(offMode, granularity === "annual");
     layers.push(new deck.HeatmapLayer({
       id: "heat",
       data: pts,
@@ -1065,9 +1066,11 @@ function buildLayers() {
       // Always use the full combined heat scale (blue → cyan → green → yellow → orange → red)
       // regardless of offense type. The colors carry density, not category.
       colorRange: colorRange("combined"),
-      // Pin colorDomain to the heatmap-specific max so density patterns stay
-      // visually consistent across time.
-      colorDomain: [0, heatGlobalMax],
+      // Note: HeatmapLayer auto-scales colorDomain by default. We don't pin it
+      // here because the layer smooths weights across a pixel radius which makes
+      // a fixed numeric domain hard to predict. Density patterns stay visually
+      // useful frame-to-frame even with auto-scaling; the 3D hex view is the
+      // option for strict cross-time comparison.
       updateTriggers: { getWeight: [tIdx, offMode, excludeStations, minThreshold] }
     }));
   } else {
