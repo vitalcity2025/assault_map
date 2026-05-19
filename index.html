@@ -93,6 +93,13 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 .nav-arrow:hover{color:var(--orange);border-color:var(--orange);background:rgba(255,124,83,.08);}
 .nav-arrow:disabled{opacity:.2;cursor:not-allowed;}
 .year-dropdown-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.time-dropdown-full{
+  background:rgba(5,5,7,.7);border:1px solid rgba(255,255,255,.2);color:var(--white);
+  font-family:var(--fp);font-size:11px;padding:5px 8px;cursor:pointer;font-weight:600;
+  min-width:150px;
+}
+.time-dropdown-full option{background:#1a1a1c;color:var(--white);}
+
 .jump-to-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;}
 .jump-to-label{font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);}
 .dropdown-label{font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);}
@@ -249,6 +256,10 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
         <button class="pill-sm" id="mode-compare" onclick="setMode('compare',this)">YoY change</button>
       </div>
     </div>
+    <div class="tr-group">
+      <div class="tr-label">Jump to period</div>
+      <select id="time-dropdown" class="time-dropdown-full" onchange="jumpToStep(this.value)"></select>
+    </div>
     <div class="tr-group" id="offense-group">
       <div class="tr-label">Offense type</div>
       <div class="view-pills">
@@ -310,10 +321,6 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
       </div>
       <div class="year-sub" id="year-sub">QUARTERLY TOTAL</div>
       <div class="year-counts" id="year-counts"></div>
-      <div class="jump-to-row">
-        <span class="jump-to-label">Jump to:</span>
-        <select id="time-dropdown" class="time-dropdown" onchange="jumpToStep(this.value)"></select>
-      </div>
     </div>
     <div class="slider-row">
       <span class="slider-label" id="slider-min">2006 Q1</span>
@@ -329,9 +336,6 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
         <button class="speed-btn" onclick="setSpeed(300,this)">4x</button>
       </div>
     </div>
-  </div>
-  <div class="scroll-hint" id="scroll-hint">
-    <span>&#8595;</span><span>Scroll for trend chart</span>
   </div>
 </div>
 
@@ -949,7 +953,9 @@ function buildLayers() {
       radiusPixels: 30,
       intensity: 1.2,
       threshold: 0.05,
-      colorRange: colorRange(offMode),
+      // Always use the full combined heat scale (blue → cyan → green → yellow → orange → red)
+      // regardless of offense type. The colors carry density, not category.
+      colorRange: colorRange("combined"),
       updateTriggers: { getWeight: [tIdx, offMode, excludeStations, minThreshold] }
     }));
   } else {
@@ -1004,12 +1010,12 @@ function buildLayers() {
         getColorWeight: function(d) { return d.value; },
         getElevationWeight: function(d) { return d.value; },
         radius: 300,
-        elevationScale: 20,
+        elevationScale: 4,
         extruded: true,
         pickable: true,
         coverage: 0.92,
         colorRange: colorRange(offMode),
-        elevationRange: [0, 3500],
+        elevationRange: [0, 1500],
         upperPercentile: 100,
         material: { ambient: 0.6, diffuse: 0.7, shininess: 32 },
         updateTriggers: {
