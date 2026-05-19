@@ -48,9 +48,9 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 .toggle-row:hover{color:var(--white);}
 
 /* Right side panel for top/bottom precincts */
-.side-panel{position:absolute;top:170px;right:20px;z-index:10;width:340px;
+.side-panel{position:absolute;top:280px;right:20px;z-index:10;width:340px;
   background:rgba(5,5,7,.92);border-left:2px solid var(--orange);
-  padding:14px 16px;max-height:calc(100vh - 380px);overflow-y:auto;
+  padding:14px 16px;max-height:calc(100vh - 480px);overflow-y:auto;
   pointer-events:auto;}
 .sp-tabs{display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,.1);}
 .sp-tab{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
@@ -70,7 +70,7 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 .sp-delta.up{color:var(--red);}
 .sp-delta.down{color:var(--green);}
 .sp-delta.flat{color:rgba(255,255,255,.4);}
-.sp-toggle-btn{position:absolute;top:170px;right:20px;z-index:11;
+.sp-toggle-btn{position:absolute;top:280px;right:20px;z-index:11;
   background:rgba(5,5,7,.85);border:1px solid rgba(255,255,255,.2);
   color:rgba(255,255,255,.5);font-family:var(--fp);font-weight:700;font-size:9px;
   letter-spacing:.1em;text-transform:uppercase;padding:6px 10px;cursor:pointer;
@@ -204,10 +204,6 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
         <input type="checkbox" id="exclude-stations" checked onchange="toggleStations(this.checked)">
         Exclude precinct stations
       </label>
-      <label class="toggle-row">
-        <input type="checkbox" id="show-labels" checked onchange="toggleLabels(this.checked)">
-        Show neighborhood labels
-      </label>
     </div>
     <button class="icon-btn" id="rotate-btn" onclick="toggleRotate()">
       <span class="spin-icon">&#8635;</span> Auto-rotate
@@ -321,7 +317,7 @@ var NEIGHBORHOOD_LABELS = [
 // STATE
 // =============================================================================
 var deckgl=null, MAP_DATA=null, PRECINCT_STATIONS=[];
-var mapStyle="heat", offMode="combined", showLabels=true;
+var mapStyle="heat", offMode="combined", showLabels=false;
 var excludeStations=true, rankView="top";
 var tIdx=0, tSteps=[], playing=false, playIv=null, playSpd=1200;
 var autoRot=false, rotRAF=null, rotBearing=-15, tChart=null;
@@ -418,16 +414,17 @@ function getStepData(step) {
 
     var points = [];
     var maxAbsDelta = 1;
-    // Volume threshold: only include hexagons where the combined cur+prior
-    // volume is at least this much. Filters out noise from tiny cells.
-    var COMPARE_MIN_VOLUME = 20;
+    // Filter: only show hexagons where the absolute change is meaningful
+    // (5+ assault increase or decrease). Small changes are statistical noise
+    // and clutter the map.
+    var COMPARE_MIN_DELTA = 5;
     for (var key in allKeys) {
       var parts = key.split(",");
       var lng = +parts[0], lat = +parts[1];
       var c = curAgg[key] || 0;
       var p = priorAgg[key] || 0;
-      if ((c + p) < COMPARE_MIN_VOLUME) continue;
       var delta = c - p;
+      if (Math.abs(delta) < COMPARE_MIN_DELTA) continue;
       if (Math.abs(delta) > maxAbsDelta) maxAbsDelta = Math.abs(delta);
       points.push({lng:lng, lat:lat, value:delta, cur:c, prior:p});
     }
@@ -616,7 +613,7 @@ function updateLegend(maxVal, mode) {
   var title = "Assault count";
   if (mode === "compare") title = "Change vs prior YTD";
   var subtitle = "";
-  if (mode === "compare") subtitle = "Only hexagons with 20+ combined assaults shown";
+  if (mode === "compare") subtitle = "Only hexagons with ±5 or more change shown";
 
   // Build threshold strings
   for (var i = stops - 1; i >= 0; i--) {
@@ -720,12 +717,6 @@ function buildLayers() {
         getPosition: function(d) { return [d.lng, d.lat]; },
         getFillColor: function(d) {
           var delta = d.value;
-          var absDelta = Math.abs(delta);
-
-          // "No change" band — anything within ±3 reads as gray
-          // (statistical noise on a quarterly basis, not a real trend)
-          if (absDelta <= 3) return [220, 220, 220, 170];
-
           // Normalize against max for color intensity, with sqrt compression
           // so larger changes really stand out
           var ratio = delta / maxAbs;
