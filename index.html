@@ -278,8 +278,8 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     <div class="tr-group">
       <div class="tr-label">Map style</div>
       <div class="view-pills">
-        <button class="pill-sm" onclick="setMapStyle('hex',this)">3D Hex</button>
-        <button class="pill-sm active" onclick="setMapStyle('heat',this)">Heatmap</button>
+        <button class="pill-sm active" onclick="setMapStyle('hex',this)">3D Hex</button>
+        <button class="pill-sm" onclick="setMapStyle('heat',this)">Heatmap</button>
       </div>
     </div>
     <div class="tr-group">
@@ -400,7 +400,7 @@ var NEIGHBORHOOD_LABELS = [
 // STATE
 // =============================================================================
 var deckgl=null, MAP_DATA=null, PRECINCT_STATIONS=[];
-var mapStyle="heat", offMode="combined", showLabels=false;
+var mapStyle="hex", offMode="combined", showLabels=false;
 var excludeStations=true, rankView="top";
 var tIdx=0, tSteps=[], playing=false, playIv=null, playSpd=1200;
 var autoRot=false, rotRAF=null, rotBearing=-15, tChart=null;
