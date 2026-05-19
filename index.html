@@ -588,14 +588,15 @@ function colorRange(mode) {
   }
   if (mode === "compare") {
     // Diverging: deep green (improving) → near-white (no change) → deep red (worsening)
+    // Made middle stops more saturated so changes register visually instead of all looking pale.
     return [
-      [40, 130, 60],     // deep green
-      [160, 210, 170],   // light green
-      [220, 240, 225],   // pale green
-      [240, 240, 240],   // near-white
-      [245, 225, 220],   // pale red/pink
-      [230, 150, 130],   // light red
-      [200, 50, 50]      // deep red
+      [30, 110, 50],     // deep green
+      [110, 180, 130],   // medium green
+      [180, 220, 195],   // light green
+      [240, 240, 240],   // near-white (no change)
+      [240, 200, 195],   // light pink
+      [225, 130, 110],   // medium red
+      [195, 40, 40]      // deep red
     ];
   }
   // Combined: full heat scale
@@ -691,7 +692,7 @@ function buildLayers() {
   currentMaxValue = d.maxVal;
   // In compare mode, use the same compressed max we use for the layer
   // so legend labels match what's actually drawn.
-  var legendMax = d.isCompare ? Math.max(5, Math.round(d.maxVal * 0.4)) : d.maxVal;
+  var legendMax = d.isCompare ? Math.max(8, Math.round(d.maxVal * 0.18)) : d.maxVal;
   updateLegend(legendMax, offMode);
   updateThresholdSlider(d.maxVal, d.isCompare);
 
@@ -711,12 +712,12 @@ function buildLayers() {
     }));
   } else {
     if (d.isCompare) {
-      // Use HexagonLayer to properly bin source cells into clean non-overlapping hexagons.
-      // getColorWeight sums deltas across all source cells that fall in each hex bin.
-      // Compress the colorDomain to a tighter range than the absolute max so
-      // small/medium changes get more visible color variation. Use the 90th
-      // percentile worth of magnitude rather than full max.
-      var compressedMax = Math.max(5, Math.round(d.maxVal * 0.4));
+      // HexagonLayer bins source cells into clean non-overlapping hexagons.
+      // We aggressively compress the colorDomain so that even modest changes
+      // get visible color. Anything beyond compressedMax saturates to the
+      // deepest red/green. This makes the map dramatically more legible
+      // since most hex bins have modest deltas, not extreme ones.
+      var compressedMax = Math.max(8, Math.round(d.maxVal * 0.18));
       layers.push(new deck.HexagonLayer({
         id: "compare-hex",
         data: pts,
@@ -789,13 +790,29 @@ function handleHover(info, step, mode) {
   if (info.object) {
     var text;
     if (mode === "compare") {
-      var o = info.object;
-      var d = o.value;
+      // HexagonLayer aggregates source points into bins.
+      // The bin's colorValue is the SUM of getColorWeight (our delta values)
+      // across all source cells in that hex. Also sum up cur/prior across
+      // the underlying points for the tooltip.
+      var binPoints = info.object.points || [];
+      var totalDelta = 0, totalCur = 0, totalPrior = 0;
+      for (var i = 0; i < binPoints.length; i++) {
+        // points can be wrapped — handle both raw and {source:...} shape
+        var src = binPoints[i].source || binPoints[i];
+        totalDelta += (src.value || 0);
+        totalCur += (src.cur || 0);
+        totalPrior += (src.prior || 0);
+      }
+      // Fallback to colorValue if points array isn't available
+      if (binPoints.length === 0 && info.object.colorValue !== undefined) {
+        totalDelta = info.object.colorValue;
+      }
+      var d = totalDelta;
       var sign = d > 0 ? "+" : "";
       var color = d > 0 ? "#e7466d" : d < 0 ? "#3a8a3e" : "#999";
       text = '<strong style="font-size:14px;font-weight:700;color:' + color + ';">' + sign + d.toLocaleString() + ' assaults</strong><br>'
         + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + (step.year-1) + ' Q' + step.quarter + ' YTD</span><br>'
-        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + (o.cur || 0).toLocaleString() + ' this period &middot; ' + (o.prior || 0).toLocaleString() + ' prior period</span>';
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + totalCur.toLocaleString() + ' this period &middot; ' + totalPrior.toLocaleString() + ' prior period</span>';
     } else {
       var count = info.object.elevationValue || info.object.colorValue || 0;
       text = '<strong style="font-size:14px;font-weight:700;">' + Math.round(count).toLocaleString() + ' assaults</strong><br>'
