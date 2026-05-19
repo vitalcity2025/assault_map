@@ -195,8 +195,8 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     <div class="tr-group">
       <div class="tr-label">Map style</div>
       <div class="view-pills">
-        <button class="pill-sm active" onclick="setMapStyle('hex',this)">3D Hex</button>
-        <button class="pill-sm" onclick="setMapStyle('heat',this)">Heatmap</button>
+        <button class="pill-sm" onclick="setMapStyle('hex',this)">3D Hex</button>
+        <button class="pill-sm active" onclick="setMapStyle('heat',this)">Heatmap</button>
       </div>
     </div>
     <div class="tr-group">
@@ -321,7 +321,7 @@ var NEIGHBORHOOD_LABELS = [
 // STATE
 // =============================================================================
 var deckgl=null, MAP_DATA=null, PRECINCT_STATIONS=[];
-var mapStyle="hex", offMode="combined", showLabels=true;
+var mapStyle="heat", offMode="combined", showLabels=true;
 var excludeStations=true, rankView="top";
 var tIdx=0, tSteps=[], playing=false, playIv=null, playSpd=1200;
 var autoRot=false, rotRAF=null, rotBearing=-15, tChart=null;
@@ -418,11 +418,15 @@ function getStepData(step) {
 
     var points = [];
     var maxAbsDelta = 1;
+    // Volume threshold: only include hexagons where the combined cur+prior
+    // volume is at least this much. Filters out noise from tiny cells.
+    var COMPARE_MIN_VOLUME = 20;
     for (var key in allKeys) {
       var parts = key.split(",");
       var lng = +parts[0], lat = +parts[1];
       var c = curAgg[key] || 0;
       var p = priorAgg[key] || 0;
+      if ((c + p) < COMPARE_MIN_VOLUME) continue;
       var delta = c - p;
       if (Math.abs(delta) > maxAbsDelta) maxAbsDelta = Math.abs(delta);
       points.push({lng:lng, lat:lat, value:delta, cur:c, prior:p});
@@ -611,6 +615,8 @@ function updateLegend(maxVal, mode) {
   var legendHTML = "";
   var title = "Assault count";
   if (mode === "compare") title = "Change vs prior YTD";
+  var subtitle = "";
+  if (mode === "compare") subtitle = "Only hexagons with 20+ combined assaults shown";
 
   // Build threshold strings
   for (var i = stops - 1; i >= 0; i--) {
@@ -650,6 +656,21 @@ function updateLegend(maxVal, mode) {
   }
   document.getElementById("legend-stops").innerHTML = legendHTML;
   document.querySelector(".legend-title").textContent = title;
+  // Add or remove subtitle
+  var lg = document.getElementById("legend");
+  var existing = lg.querySelector(".legend-subtitle");
+  if (subtitle) {
+    if (!existing) {
+      var el = document.createElement("div");
+      el.className = "legend-subtitle";
+      el.style.cssText = "font-size:9px;color:rgba(255,255,255,.35);margin-top:6px;line-height:1.4;font-style:italic;";
+      lg.appendChild(el);
+      existing = el;
+    }
+    existing.textContent = subtitle;
+  } else if (existing) {
+    existing.remove();
+  }
 }
 
 // =============================================================================
@@ -687,36 +708,37 @@ function buildLayers() {
   } else {
     // For compare mode, separate positive and negative deltas so we can color them properly
     if (d.isCompare) {
-      // Flat hexagons — color tells the story, height would add visual noise
+      // Flat hexagons — color tells the story, height would add visual noise.
+      // Bigger hexagons (400m) aggregate up small noise into meaningful units.
+      // Volume threshold filters out cells with too little data to be meaningful.
       var maxAbs = d.maxVal || 1;
       layers.push(new deck.ColumnLayer({
         id: "compare-hex",
         data: pts,
-        diskResolution: 6, radius: 150,
-        extruded: false,  // flat — no height
+        diskResolution: 6, radius: 400,
+        extruded: false,
         getPosition: function(d) { return [d.lng, d.lat]; },
         getFillColor: function(d) {
-          // Normalized ratio: -1 (biggest decrease) to +1 (biggest increase)
-          var ratio = d.value / maxAbs;
-          // Use sqrt to compress the extremes and give visible color to smaller changes
+          var delta = d.value;
+          var absDelta = Math.abs(delta);
+
+          // "No change" band — anything within ±3 reads as gray
+          // (statistical noise on a quarterly basis, not a real trend)
+          if (absDelta <= 3) return [220, 220, 220, 170];
+
+          // Normalize against max for color intensity, with sqrt compression
+          // so larger changes really stand out
+          var ratio = delta / maxAbs;
           var t = Math.sign(ratio) * Math.pow(Math.abs(ratio), 0.5);
 
-          // Diverging color scale: green (decrease) → white (zero) → red (increase)
-          // Anchor stops:
-          //   t = -1.0 → deep green   [40, 130, 60]
-          //   t = -0.5 → light green  [160, 210, 170]
-          //   t = -0.1 → very pale    [220, 240, 225]
-          //   t =  0   → near-white   [240, 240, 240]
-          //   t = +0.1 → very pale    [245, 225, 220]
-          //   t = +0.5 → light red    [230, 150, 130]
-          //   t = +1.0 → deep red     [200, 50, 50]
+          // 7-stop diverging scale
           var stops = [
             [-1.0, [40, 130, 60]],
-            [-0.5, [160, 210, 170]],
-            [-0.1, [220, 240, 225]],
+            [-0.5, [120, 190, 140]],
+            [-0.1, [200, 230, 210]],
             [ 0.0, [240, 240, 240]],
-            [ 0.1, [245, 225, 220]],
-            [ 0.5, [230, 150, 130]],
+            [ 0.1, [240, 215, 210]],
+            [ 0.5, [225, 130, 110]],
             [ 1.0, [200, 50, 50]]
           ];
           for (var i = 1; i < stops.length; i++) {
