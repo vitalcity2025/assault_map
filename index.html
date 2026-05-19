@@ -83,6 +83,30 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 /* Bottom controls */
 .controls{position:absolute;bottom:0;left:0;right:0;z-index:10;padding:0 24px 20px;background:linear-gradient(to top,rgba(5,5,7,.97) 0%,rgba(5,5,7,.75) 65%,rgba(5,5,7,0) 100%);}
 .year-display{text-align:center;margin-bottom:10px;}
+.year-nav-row{display:flex;align-items:center;justify-content:center;gap:12px;}
+.nav-arrow{
+  background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);
+  font-size:24px;line-height:1;width:38px;height:38px;cursor:pointer;
+  font-family:var(--fp);transition:all .15s;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;
+}
+.nav-arrow:hover{color:var(--orange);border-color:var(--orange);background:rgba(255,124,83,.08);}
+.nav-arrow:disabled{opacity:.2;cursor:not-allowed;}
+.year-dropdown-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.dropdown-label{font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);}
+.time-dropdown{
+  background:rgba(5,5,7,.7);border:1px solid rgba(255,255,255,.2);color:var(--white);
+  font-family:var(--fp);font-size:11px;padding:4px 8px;cursor:pointer;font-weight:600;
+}
+.time-dropdown option{background:#1a1a1c;color:var(--white);}
+.granularity-toggle{display:inline-flex;gap:2px;margin-left:8px;}
+.gran-btn{
+  font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid rgba(255,255,255,.18);background:rgba(5,5,7,.6);color:rgba(255,255,255,.45);
+  padding:4px 9px;cursor:pointer;transition:all .1s;
+}
+.gran-btn:hover:not(.active){border-color:rgba(255,255,255,.5);color:var(--white);}
+.gran-btn.active{background:var(--orange);border-color:var(--orange);color:var(--black);}
 .year-num{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:60px;line-height:1;letter-spacing:-.03em;color:var(--white);text-shadow:0 0 60px rgba(255,124,83,.35);transition:color .2s;}
 .year-num.playing{color:var(--orange);}
 .year-sub{font-weight:700;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:3px;}
@@ -249,9 +273,21 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 
   <div class="controls">
     <div class="year-display">
-      <div class="year-num" id="year-num">2026 Q1</div>
+      <div class="year-nav-row">
+        <button class="nav-arrow" id="prev-btn" onclick="stepTime(-1)" title="Previous">&#8249;</button>
+        <div class="year-num" id="year-num">2026 Q1</div>
+        <button class="nav-arrow" id="next-btn" onclick="stepTime(1)" title="Next">&#8250;</button>
+      </div>
       <div class="year-sub" id="year-sub">QUARTERLY TOTAL</div>
       <div class="year-counts" id="year-counts"></div>
+      <div class="year-dropdown-row">
+        <span class="dropdown-label">Jump to:</span>
+        <select id="time-dropdown" class="time-dropdown" onchange="jumpToStep(this.value)"></select>
+        <span class="granularity-toggle">
+          <button class="gran-btn active" id="gran-quarterly" onclick="setGranularity('quarterly',this)">Quarterly</button>
+          <button class="gran-btn" id="gran-annual" onclick="setGranularity('annual',this)">Annual</button>
+        </span>
+      </div>
     </div>
     <div class="slider-row">
       <span class="slider-label" id="slider-min">2006 Q1</span>
@@ -281,7 +317,7 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
 <div id="chart-section">
   <div class="chart-eyebrow">Vital City</div>
   <div class="chart-heading">Citywide assault over time</div>
-  <div class="chart-subtext">Total complaints by year &#183; highlighted dot tracks the map</div>
+  <div class="chart-subtext">Total complaints by year &#183; highlighted dot tracks the map &#183; <span style="color:#ff7c53;">dashed segment</span> and <span style="color:#ff7c53;">open circle</span> = partial year (only YTD data available)</div>
   <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
   <div class="chart-source">Source: NYPD Complaint Data Historic and Current YTD, NYC Open Data. Felony and misdemeanor assault complaints geocoded by NYPD, 2006-2026 YTD. Locations rounded to a ~110m grid for aggregation. Precinct station fallback coordinates excluded by default.</div>
 </div>
@@ -367,9 +403,35 @@ function parseGrid(gridTable) {
 }
 
 // =============================================================================
-// BUILD TIME STEPS — quarterly
+// BUILD TIME STEPS — quarterly or annual depending on granularity
 // =============================================================================
+var granularity = "quarterly"; // "quarterly" or "annual"
+
 function buildSteps() {
+  if (granularity === "annual") {
+    // One step per year, labeled as full year. The "quarter" field is set to 4
+    // (full year) for completed years, or to the latest quarter for the current
+    // partial year so YTD comparisons still work.
+    var years = Object.keys(GRID_BY_YEAR).map(Number).sort(function(a,b){return a-b;});
+    return years.map(function(y) {
+      // For the current partial year (2026), use the max quarter we have data for
+      var maxQ = 0;
+      var rows = GRID_BY_YEAR[y] || [];
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].quarter > maxQ) maxQ = rows[i].quarter;
+      }
+      var isPartial = (maxQ < 4);
+      return {
+        year: y,
+        quarter: maxQ,
+        key: y + "-annual",
+        label: String(y),
+        isPartial: isPartial,
+        annual: true
+      };
+    });
+  }
+  // Quarterly steps (default)
   var keys = Object.keys(GRID_BY_STEP).map(function(k){
     var p = k.split("-"); return {year:+p[0], q:+p[1], key:k};
   });
@@ -391,7 +453,13 @@ function buildSteps() {
 // =============================================================================
 // Returns: { points: [{lng,lat,value}], maxVal, totalFel, totalMisd }
 function getStepData(step) {
-  var rows = GRID_BY_STEP[step.key] || [];
+  // For totals mode in annual granularity, aggregate all quarters of that year
+  var rows;
+  if (step.annual) {
+    rows = GRID_BY_YEAR[step.year] || [];
+  } else {
+    rows = GRID_BY_STEP[step.key] || [];
+  }
 
   if (offMode === "compare") {
     // YoY YTD comparison:
@@ -503,8 +571,9 @@ function getPrecinctRankings(step) {
     }
     return arr;
   }
-  // Standard mode — for current step only
-  rows = GRID_BY_STEP[step.key] || [];
+  // Standard mode — for current step only.
+  // In annual mode, aggregate all quarters of the year.
+  rows = step.annual ? (GRID_BY_YEAR[step.year] || []) : (GRID_BY_STEP[step.key] || []);
   var byPct = {};
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
@@ -984,16 +1053,45 @@ function updateLayer() {
 function updateUI() {
   var step = tSteps[tIdx];
   if (!step) return;
-  document.getElementById("year-num").textContent = step.label;
+  // Year/period label
+  var displayLabel = step.label;
+  if (step.annual && step.isPartial) {
+    displayLabel = step.year + " YTD";
+  }
+  document.getElementById("year-num").textContent = displayLabel;
+
+  // Sublabel describing what's shown
   if (offMode === "compare") {
-    document.getElementById("year-sub").textContent =
-      "Q" + step.quarter + " YTD vs " + (step.year - 1) + " Q" + step.quarter + " YTD";
+    if (step.annual) {
+      if (step.isPartial) {
+        // 2026 YTD (Q1) vs 2025 Q1 YTD
+        document.getElementById("year-sub").textContent =
+          "Q" + step.quarter + " YTD vs " + (step.year - 1) + " Q" + step.quarter + " YTD";
+      } else {
+        // Full year 2024 vs 2023
+        document.getElementById("year-sub").textContent =
+          step.year + " vs " + (step.year - 1);
+      }
+    } else {
+      document.getElementById("year-sub").textContent =
+        "Q" + step.quarter + " YTD vs " + (step.year - 1) + " Q" + step.quarter + " YTD";
+    }
   } else {
-    document.getElementById("year-sub").textContent = "QUARTERLY TOTAL";
+    document.getElementById("year-sub").textContent =
+      step.annual ? (step.isPartial ? "YEAR-TO-DATE TOTAL" : "ANNUAL TOTAL") : "QUARTERLY TOTAL";
   }
   document.getElementById("year-num").classList.toggle("playing", playing);
+
+  // Sync the slider, dropdown, and nav arrows
   document.getElementById("time-slider").value = String(tIdx);
   document.getElementById("time-slider").classList.toggle("playing", playing);
+  var dd = document.getElementById("time-dropdown");
+  if (dd && dd.options.length > 0) dd.value = String(tIdx);
+  var prevBtn = document.getElementById("prev-btn");
+  var nextBtn = document.getElementById("next-btn");
+  if (prevBtn) prevBtn.disabled = (tIdx === 0);
+  if (nextBtn) nextBtn.disabled = (tIdx === tSteps.length - 1);
+
   document.getElementById("play-btn").innerHTML = playing ? "&#9646;&#9646;" : "&#9654;";
   document.getElementById("play-btn").classList.toggle("playing", playing);
 
@@ -1057,26 +1155,53 @@ function setMode(mode, btn) {
   viewMode2 = mode;
   document.querySelectorAll("#mode-totals,#mode-compare").forEach(function(b){b.classList.remove("active");});
   btn.classList.add("active");
-  // Update offMode to drive the data pipeline
   if (mode === "compare") {
     offMode = "compare";
-    // Grey out the offense pills since they don't apply
     document.querySelectorAll(".pill-group .pill-btn").forEach(function(b){
       b.style.opacity = "0.3";
       b.style.pointerEvents = "none";
     });
   } else {
-    // Restore offense pills to active state
     document.querySelectorAll(".pill-group .pill-btn").forEach(function(b){
       b.style.opacity = "";
       b.style.pointerEvents = "";
     });
-    // Restore offMode based on which pill is currently active
     var activePill = document.querySelector(".pill-group .pill-btn.active");
     if (activePill && activePill.textContent.toLowerCase().indexOf("felony") >= 0) offMode = "felony";
     else if (activePill && activePill.textContent.toLowerCase().indexOf("misd") >= 0) offMode = "misd";
     else offMode = "combined";
   }
+  // Re-build steps so 2006 gets locked/unlocked
+  rebuildSteps(true);
+  updateLayer();
+}
+
+// Navigation arrows: step forward or back
+function stepTime(delta) {
+  stopPlay();
+  var newIdx = tIdx + delta;
+  if (newIdx < 0) newIdx = 0;
+  if (newIdx >= tSteps.length) newIdx = tSteps.length - 1;
+  if (newIdx === tIdx) return;
+  tIdx = newIdx;
+  updateLayer();
+}
+
+// Dropdown: jump to a specific time step
+function jumpToStep(value) {
+  stopPlay();
+  tIdx = parseInt(value);
+  updateLayer();
+}
+
+// Toggle annual vs quarterly granularity
+function setGranularity(g, btn) {
+  if (granularity === g) return;
+  granularity = g;
+  document.querySelectorAll(".granularity-toggle .gran-btn").forEach(function(b){b.classList.remove("active");});
+  btn.classList.add("active");
+  stopPlay();
+  rebuildSteps(true);
   updateLayer();
 }
 
@@ -1195,24 +1320,30 @@ window.addEventListener("scroll", function() {
 // =============================================================================
 function buildChartData() {
   var years = Object.keys(GRID_BY_YEAR).map(Number).sort(function(a,b){return a-b;});
-  var fel = [], misd = [], total = [];
+  var fel = [], misd = [], total = [], isPartial = [];
   for (var i = 0; i < years.length; i++) {
     var rows = GRID_BY_YEAR[years[i]] || [];
-    var f = 0, m = 0;
+    var f = 0, m = 0, maxQ = 0;
     for (var j = 0; j < rows.length; j++) {
       var r = rows[j];
+      if (r.quarter > maxQ) maxQ = r.quarter;
       if (excludeStations && r.isStation) continue;
       if (r.offense === "felony") f += r.n;
       else if (r.offense === "misd") m += r.n;
     }
     fel.push(f); misd.push(m); total.push(f + m);
+    isPartial.push(maxQ < 4);
   }
-  return { years: years, fel: fel, misd: misd, total: total };
+  return { years: years, fel: fel, misd: misd, total: total, isPartial: isPartial };
 }
 
 function initChart() {
   var cd = buildChartData();
   var maxYear = Math.max.apply(null, cd.years);
+  // Find which years are partial (won't have all 4 quarters)
+  // Segment style: dashed for segments that touch a partial year
+  function isPartialIdx(i) { return cd.isPartial[i]; }
+
   tChart = new Chart(document.getElementById("trend-chart"), {
     type: "line",
     data: {
@@ -1221,13 +1352,47 @@ function initChart() {
         { label: "Combined total", data: cd.total,
           borderColor: "rgba(255,255,255,.5)", backgroundColor: "rgba(255,124,83,.07)",
           borderWidth: 2,
-          pointBackgroundColor: cd.years.map(function(y){return y===maxYear?"#ff7c53":"rgba(255,255,255,.1)";}),
-          pointRadius: cd.years.map(function(y){return y===maxYear?8:2;}),
-          pointHoverRadius: 6, tension: .25, fill: true },
+          // Open/transparent dot for partial year, solid for full years
+          pointBackgroundColor: cd.years.map(function(y, i) {
+            if (cd.isPartial[i]) return "rgba(255,124,83,0)";  // transparent fill = "open"
+            return y === maxYear ? "#ff7c53" : "rgba(255,255,255,.1)";
+          }),
+          pointBorderColor: cd.years.map(function(y, i) {
+            if (cd.isPartial[i]) return "#ff7c53";  // orange ring on partial
+            return y === maxYear ? "#ff7c53" : "rgba(255,255,255,.1)";
+          }),
+          pointBorderWidth: cd.years.map(function(y, i) {
+            return cd.isPartial[i] ? 2 : 0;
+          }),
+          pointRadius: cd.years.map(function(y, i) {
+            if (cd.isPartial[i]) return 7;
+            return y === maxYear ? 8 : 2;
+          }),
+          pointHoverRadius: 7, tension: .25, fill: true,
+          // Dashed segment when it touches a partial year
+          segment: {
+            borderDash: function(ctx) {
+              var p0 = ctx.p0DataIndex, p1 = ctx.p1DataIndex;
+              return (isPartialIdx(p0) || isPartialIdx(p1)) ? [5, 4] : undefined;
+            }
+          }
+        },
         { label: "Felony", data: cd.fel, borderColor: "rgba(255,124,83,.55)",
-          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false },
+          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false,
+          segment: {
+            borderDash: function(ctx) {
+              return (isPartialIdx(ctx.p0DataIndex) || isPartialIdx(ctx.p1DataIndex)) ? [5, 4] : undefined;
+            }
+          }
+        },
         { label: "Misdemeanor", data: cd.misd, borderColor: "rgba(57,72,130,.55)",
-          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false }
+          borderWidth: 1.5, pointRadius: 0, tension: .25, fill: false,
+          segment: {
+            borderDash: function(ctx) {
+              return (isPartialIdx(ctx.p0DataIndex) || isPartialIdx(ctx.p1DataIndex)) ? [5, 4] : undefined;
+            }
+          }
+        }
       ]
     },
     options: {
@@ -1258,8 +1423,22 @@ function updateChart() {
   tChart.data.datasets[0].data = cd.total;
   tChart.data.datasets[1].data = cd.fel;
   tChart.data.datasets[2].data = cd.misd;
-  tChart.data.datasets[0].pointBackgroundColor = tChart.data.labels.map(function(y){return +y===cy?"#ff7c53":"rgba(255,255,255,.1)";});
-  tChart.data.datasets[0].pointRadius = tChart.data.labels.map(function(y){return +y===cy?8:2;});
+  // Build styling arrays respecting both currentYear AND partial year
+  tChart.data.datasets[0].pointBackgroundColor = cd.years.map(function(y, i) {
+    if (cd.isPartial[i]) return "rgba(255,124,83,0)";
+    return +y === cy ? "#ff7c53" : "rgba(255,255,255,.1)";
+  });
+  tChart.data.datasets[0].pointBorderColor = cd.years.map(function(y, i) {
+    if (cd.isPartial[i]) return "#ff7c53";
+    return +y === cy ? "#ff7c53" : "rgba(255,255,255,.1)";
+  });
+  tChart.data.datasets[0].pointBorderWidth = cd.years.map(function(y, i) {
+    return cd.isPartial[i] ? 2 : 0;
+  });
+  tChart.data.datasets[0].pointRadius = cd.years.map(function(y, i) {
+    if (cd.isPartial[i]) return 7;
+    return +y === cy ? 8 : 2;
+  });
   tChart.update("none");
 }
 
@@ -1275,18 +1454,58 @@ function initMap() {
     controller: { dragRotate: true, touchRotate: true },
     layers: []
   });
-  tSteps = buildSteps();
-  tIdx = tSteps.length - 1;
-  var sl = document.getElementById("time-slider");
-  sl.max = String(tSteps.length - 1);
-  sl.value = String(tIdx);
-  document.getElementById("slider-min").textContent = tSteps[0].label;
-  document.getElementById("slider-max").textContent = tSteps[tSteps.length - 1].label;
+  rebuildSteps(false);  // build initial tSteps + slider + dropdown
   setTimeout(function() {
     updateLayer();
     document.getElementById("loading").style.display = "none";
     initChart();
   }, 700);
+}
+
+// Rebuilds the time step list and updates the slider accordingly.
+// Called when granularity changes (Annual/Quarterly), or when compare mode
+// toggles (which excludes 2006 since there's no 2005 to compare against).
+function rebuildSteps(preserveTime) {
+  // Remember current real-world time to restore after rebuild
+  var oldStep = tSteps[tIdx];
+  tSteps = buildSteps();
+  // In compare mode, drop 2006 — no 2005 to compare against
+  if (offMode === "compare") {
+    tSteps = tSteps.filter(function(s){ return s.year >= 2007; });
+  }
+  // Try to restore old time
+  if (preserveTime && oldStep) {
+    var found = -1;
+    for (var i = 0; i < tSteps.length; i++) {
+      if (tSteps[i].year === oldStep.year) {
+        // Match by year first; if quarterly, match the closest quarter
+        if (tSteps[i].annual || tSteps[i].quarter === oldStep.quarter) {
+          found = i;
+          break;
+        }
+        if (found === -1) found = i; // fallback to first hit by year
+      }
+    }
+    tIdx = found >= 0 ? found : tSteps.length - 1;
+  } else {
+    tIdx = tSteps.length - 1;
+  }
+  var sl = document.getElementById("time-slider");
+  sl.max = String(tSteps.length - 1);
+  sl.value = String(tIdx);
+  document.getElementById("slider-min").textContent = tSteps[0].label;
+  document.getElementById("slider-max").textContent = tSteps[tSteps.length - 1].label;
+  populateTimeDropdown();
+}
+
+// Populate the year/period dropdown for direct navigation
+function populateTimeDropdown() {
+  var sel = document.getElementById("time-dropdown");
+  if (!sel) return;
+  sel.innerHTML = tSteps.map(function(s, i) {
+    return '<option value="' + i + '">' + s.label + '</option>';
+  }).join("");
+  sel.value = String(tIdx);
 }
 
 async function boot() {
