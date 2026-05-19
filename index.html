@@ -582,11 +582,15 @@ function colorRange(mode) {
     ];
   }
   if (mode === "compare") {
-    // Diverging: red (worse) - white-ish (no change) - green (better)
+    // Diverging: deep green (improving) → near-white (no change) → deep red (worsening)
     return [
-      [50, 120, 50],   [110, 170, 90],   [180, 210, 150],
-      [220, 220, 220], [240, 180, 140],  [220, 100, 80],
-      [180, 50, 50]
+      [40, 130, 60],     // deep green
+      [160, 210, 170],   // light green
+      [220, 240, 225],   // pale green
+      [240, 240, 240],   // near-white
+      [245, 225, 220],   // pale red/pink
+      [230, 150, 130],   // light red
+      [200, 50, 50]      // deep red
     ];
   }
   // Combined: full heat scale
@@ -614,18 +618,27 @@ function updateLegend(maxVal, mode) {
     var hi = Math.round(maxVal * ((i + 1) / stops));
     var label;
     if (mode === "compare") {
-      // Diverging: middle is "no change", ends are "+X" / "-X"
-      var mid = Math.floor(stops / 2);
-      if (i > mid) {
-        var hiPos = Math.round(maxVal * ((i + 1 - mid) / mid));
-        var loPos = Math.round(maxVal * ((i - mid) / mid));
-        label = "+" + loPos + " to +" + hiPos;
-      } else if (i < mid) {
-        var hiNeg = Math.round(maxVal * ((mid - i - 1) / mid));
-        var loNeg = Math.round(maxVal * ((mid - i) / mid));
-        label = "-" + loNeg + " to -" + hiNeg;
+      // 7-stop diverging scale: [0]=deepest decrease, [3]=no change, [6]=deepest increase
+      // We're iterating i from stops-1 down to 0 so legend reads top-to-bottom: increase → no change → decrease
+      var mid = Math.floor(stops / 2);  // 3 for 7 stops
+      if (i === mid) {
+        label = "No change";
+      } else if (i > mid) {
+        // Above middle = increase. Stops [4,5,6] map to thirds of positive range.
+        var step = (i - mid);            // 1, 2, 3
+        var totalStepsPos = stops - 1 - mid;  // 3
+        var hiPos = Math.round(maxVal * (step / totalStepsPos));
+        var loPos = Math.round(maxVal * ((step - 1) / totalStepsPos));
+        label = "+" + loPos.toLocaleString() + " to +" + hiPos.toLocaleString();
+        if (step === totalStepsPos) label = "+" + loPos.toLocaleString() + " or more";
       } else {
-        label = "near zero";
+        // Below middle = decrease.
+        var stepD = (mid - i);            // 1, 2, 3
+        var totalStepsNeg = mid;
+        var hiNeg = Math.round(maxVal * (stepD / totalStepsNeg));
+        var loNeg = Math.round(maxVal * ((stepD - 1) / totalStepsNeg));
+        label = "−" + loNeg.toLocaleString() + " to −" + hiNeg.toLocaleString();
+        if (stepD === totalStepsNeg) label = "−" + loNeg.toLocaleString() + " or more";
       }
     } else {
       label = lo.toLocaleString() + "-" + hi.toLocaleString();
@@ -674,35 +687,59 @@ function buildLayers() {
   } else {
     // For compare mode, separate positive and negative deltas so we can color them properly
     if (d.isCompare) {
-      // Use ColumnLayer with explicit positioning
+      // Flat hexagons — color tells the story, height would add visual noise
       var maxAbs = d.maxVal || 1;
       layers.push(new deck.ColumnLayer({
         id: "compare-hex",
         data: pts,
-        diskResolution: 6, radius: 130,
-        extruded: true,
+        diskResolution: 6, radius: 150,
+        extruded: false,  // flat — no height
         getPosition: function(d) { return [d.lng, d.lat]; },
-        getElevation: function(d) {
-          return Math.pow(Math.abs(d.value) / maxAbs, 0.6) * 3500;
-        },
         getFillColor: function(d) {
-          // -1 to +1 ratio
+          // Normalized ratio: -1 (biggest decrease) to +1 (biggest increase)
           var ratio = d.value / maxAbs;
-          // Red for increase, green for decrease, gray near zero
-          if (Math.abs(ratio) < 0.05) return [180, 180, 180, 180];
-          if (ratio > 0) {
-            // Increase: red gradient
-            var t = Math.min(1, ratio);
-            return [180 + Math.round(75 * t), Math.round(50 + 50 * (1-t)), Math.round(50 + 30 * (1-t)), 230];
-          } else {
-            var t2 = Math.min(1, -ratio);
-            return [Math.round(50 + 90 * (1-t2)), 140 + Math.round(70 * t2), Math.round(60 + 30 * (1-t2)), 230];
+          // Use sqrt to compress the extremes and give visible color to smaller changes
+          var t = Math.sign(ratio) * Math.pow(Math.abs(ratio), 0.5);
+
+          // Diverging color scale: green (decrease) → white (zero) → red (increase)
+          // Anchor stops:
+          //   t = -1.0 → deep green   [40, 130, 60]
+          //   t = -0.5 → light green  [160, 210, 170]
+          //   t = -0.1 → very pale    [220, 240, 225]
+          //   t =  0   → near-white   [240, 240, 240]
+          //   t = +0.1 → very pale    [245, 225, 220]
+          //   t = +0.5 → light red    [230, 150, 130]
+          //   t = +1.0 → deep red     [200, 50, 50]
+          var stops = [
+            [-1.0, [40, 130, 60]],
+            [-0.5, [160, 210, 170]],
+            [-0.1, [220, 240, 225]],
+            [ 0.0, [240, 240, 240]],
+            [ 0.1, [245, 225, 220]],
+            [ 0.5, [230, 150, 130]],
+            [ 1.0, [200, 50, 50]]
+          ];
+          for (var i = 1; i < stops.length; i++) {
+            var t0 = stops[i-1][0], c0 = stops[i-1][1];
+            var t1 = stops[i][0],   c1 = stops[i][1];
+            if (t <= t1) {
+              var u = (t - t0) / (t1 - t0);
+              return [
+                Math.round(c0[0] + (c1[0]-c0[0]) * u),
+                Math.round(c0[1] + (c1[1]-c0[1]) * u),
+                Math.round(c0[2] + (c1[2]-c0[2]) * u),
+                220
+              ];
+            }
           }
+          return [200, 50, 50, 220];
         },
-        material: { ambient: 0.6, diffuse: 0.7 },
+        getLineColor: [0, 0, 0, 0],
         pickable: true,
         coverage: 0.92,
-        updateTriggers: { getElevation: [tIdx, excludeStations], getFillColor: [tIdx, excludeStations] },
+        updateTriggers: {
+          getFillColor: [tIdx, excludeStations]
+        },
         onHover: function(info) { handleHover(info, step, "compare"); }
       }));
     } else {
