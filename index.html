@@ -28,10 +28,13 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 .hd-title{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:30px;color:var(--white);line-height:1.1;letter-spacing:-.02em;}
 .hd-title em{font-style:italic;color:var(--orange);}
 .hd-sub{font-weight:300;font-size:12px;color:rgba(255,255,255,.4);margin-top:5px;max-width:600px;}
-.hd-caption{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:18px;font-style:italic;color:rgba(255,255,255,.85);margin-top:14px;max-width:720px;line-height:1.4;letter-spacing:-.005em;}
-.hd-caption strong{font-weight:400;font-style:normal;color:var(--orange);}
-.hd-caption .up{color:#e7466d;font-weight:400;font-style:normal;}
-.hd-caption .down{color:#3a8a3e;font-weight:400;font-style:normal;}
+
+/* Caption section — narrative standfirst between map and rankings */
+#caption-section{background:var(--black);padding:36px 48px 8px;}
+.caption-body{font-family:"gascogne","Georgia",serif;font-weight:200;font-size:22px;font-style:italic;color:rgba(255,255,255,.85);max-width:880px;line-height:1.45;letter-spacing:-.005em;}
+.caption-body strong{font-weight:400;font-style:normal;color:var(--orange);}
+.caption-body .up{color:#e7466d;font-weight:400;font-style:normal;}
+.caption-body .down{color:#3a8a3e;font-weight:400;font-style:normal;}
 
 /* Top-right controls */
 .top-right{position:absolute;top:20px;right:20px;z-index:10;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:auto;}
@@ -252,7 +255,6 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
     <div class="hd-vc">Vital City</div>
     <div class="hd-title">NYC <em>assault</em> &#8212; 3D map</div>
     <div class="hd-sub">Felony and misdemeanor complaints by location &#183; drag to pan &#183; right-click drag to rotate</div>
-    <div class="hd-caption" id="hd-caption"></div>
   </div>
 
   <div class="top-right">
@@ -287,12 +289,13 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
       <div class="view-pills">
         <button class="pill-sm active" id="style-hex" onclick="setMapStyle('hex',this)">3D Hex</button>
         <button class="pill-sm" id="style-heat" onclick="setMapStyle('heat',this)">Heatmap</button>
+        <button class="pill-sm" id="style-pctcrime" onclick="setMapStyle('pctcrime',this)">% of crime</button>
       </div>
     </div>
     <div class="tr-group" id="display-group">
       <div class="tr-label">Display</div>
       <label class="toggle-row">
-        <input type="checkbox" id="extrude-toggle" checked onchange="toggleExtruded(this.checked)">
+        <input type="checkbox" id="extrude-toggle" onchange="toggleExtruded(this.checked)">
         3D extrusion
       </label>
       <label class="toggle-row">
@@ -350,6 +353,10 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
       </div>
     </div>
   </div>
+</div>
+
+<div id="caption-section">
+  <div class="caption-body" id="hd-caption"></div>
 </div>
 
 <div id="rankings-section">
@@ -413,6 +420,10 @@ var NEIGHBORHOOD_LABELS = [
 // STATE
 // =============================================================================
 var deckgl=null, MAP_DATA=null, PRECINCT_STATIONS=[];
+var TOTAL_CRIME_DATA = null;          // Lazy-loaded total crime data for % of crime mode
+var TOTAL_GRID_BY_STEP = null;        // Indexed by "year-q" → array of {lng, lat, n, isStation, precinct}
+var TOTAL_GRID_BY_YEAR = null;        // Indexed by year → same structure
+var totalCrimeLoading = false;        // Prevents double-fetching
 var mapStyle="hex", offMode="combined", showLabels=false;
 var excludeStations=true, rankView="top";
 var tIdx=0, tSteps=[], playing=false, playIv=null, playSpd=1200;
@@ -421,8 +432,13 @@ var minThreshold=0, currentMaxValue=1;
 var IV={longitude:-73.97, latitude:40.71, zoom:10.6, pitch:52, bearing:-15};
 // New state for v2 enhancements
 var showSubway = false;     // Subway lines layer toggle
-var hexExtruded = true;     // 3D extrusion on hex view (false = flat)
+var hexExtruded = false;    // 3D extrusion on hex view (false = flat, easier to read)
 var SUBWAY_DATA = null;     // Cached GeoJSON, loaded on first toggle
+// Total crime data — loaded lazily when user first toggles to "% of crime" mode
+var TOTAL_CRIME_DATA = null;  // Raw parsed JSON
+var TOTAL_GRID_BY_STEP = {};  // "year-quarter" -> [{lng, lat, isStation, precinct, n}]
+var TOTAL_GRID_BY_YEAR = {};  // year -> [...]
+var totalCrimeLoading = false;
 
 // =============================================================================
 // COLUMNAR PARSING
@@ -457,6 +473,58 @@ function parseGrid(gridTable) {
     GRID_BY_STEP[stepKey].push(rec);
     if (!GRID_BY_YEAR[y]) GRID_BY_YEAR[y] = [];
     GRID_BY_YEAR[y].push(rec);
+  }
+}
+
+// Parses the total-crime JSON (no offense column — every row is all-crime).
+function parseTotalGrid(gridTable) {
+  var cols = gridTable.cols;
+  var iYear = cols.indexOf("year");
+  var iQ    = cols.indexOf("quarter");
+  var iLng  = cols.indexOf("lng_bin");
+  var iLat  = cols.indexOf("lat_bin");
+  var iSta  = cols.indexOf("is_precinct_station");
+  var iPct  = cols.indexOf("precinct");
+  var iN    = cols.indexOf("n");
+  var rows  = gridTable.rows;
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var y = r[iYear], q = r[iQ];
+    var stepKey = y + "-" + q;
+    var rec = {
+      lng: r[iLng], lat: r[iLat],
+      isStation: !!r[iSta],
+      precinct: r[iPct], n: r[iN],
+      quarter: q, year: y
+    };
+    if (!TOTAL_GRID_BY_STEP[stepKey]) TOTAL_GRID_BY_STEP[stepKey] = [];
+    TOTAL_GRID_BY_STEP[stepKey].push(rec);
+    if (!TOTAL_GRID_BY_YEAR[y]) TOTAL_GRID_BY_YEAR[y] = [];
+    TOTAL_GRID_BY_YEAR[y].push(rec);
+  }
+}
+
+// Lazy-loads the total crime JSON the first time the user toggles to "% of crime"
+async function loadTotalCrime() {
+  if (TOTAL_CRIME_DATA) return true;
+  if (totalCrimeLoading) {
+    // Already in flight — wait for it
+    while (totalCrimeLoading) await new Promise(function(r){ setTimeout(r, 100); });
+    return !!TOTAL_CRIME_DATA;
+  }
+  totalCrimeLoading = true;
+  try {
+    var r = await fetch("total_crime_map_data.json");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    var data = await r.json();
+    TOTAL_CRIME_DATA = data;
+    parseTotalGrid(data.grid);
+    totalCrimeLoading = false;
+    return true;
+  } catch(e) {
+    console.error("Total crime data load failed:", e);
+    totalCrimeLoading = false;
+    return false;
   }
 }
 
@@ -784,6 +852,24 @@ function updateLegend(maxVal, mode) {
         '<div class="legend-swatch" style="background:' + rgbStr(bands[b].color) + ';"></div>' +
         '<span>' + bands[b].label + '</span></div>';
     }
+  } else if (mapStyle === "pctcrime") {
+    // % of crime mode — diverging scale around citywide average
+    title = "Assault share of all crime";
+    subtitle = "Compared to the citywide ratio this period";
+    var pcBands = [
+      { color: [220, 60, 40],     label: "3× citywide or more" },
+      { color: [240, 150, 95],    label: "~2× citywide" },
+      { color: [240, 215, 200],   label: "Slightly above" },
+      { color: [210, 210, 210],   label: "Near citywide" },
+      { color: [200, 210, 220],   label: "Slightly below" },
+      { color: [120, 160, 200],   label: "~½ citywide" },
+      { color: [40, 90, 150],     label: "⅓ citywide or less" }
+    ];
+    for (var pb = 0; pb < pcBands.length; pb++) {
+      legendHTML += '<div class="legend-stop">' +
+        '<div class="legend-swatch" style="background:' + rgbStr(pcBands[pb].color) + ';"></div>' +
+        '<span>' + pcBands[pb].label + '</span></div>';
+    }
   } else if (mapStyle === "heat") {
     // Heatmap mode — show density gradient (low to high), not specific counts.
     // Heatmaps aggregate by pixel area so specific count thresholds wouldn't
@@ -1038,6 +1124,113 @@ function handleHoverCompare(info, step) {
 }
 
 // =============================================================================
+// PERCENT-OF-CRIME HELPERS
+// =============================================================================
+// Returns total-crime source-cell points for a given step (year + quarter).
+// Same shape as the assault `pts` array, so binPointsToHexGrid can consume it.
+function getTotalCrimePoints(step) {
+  if (!TOTAL_GRID_BY_STEP || !TOTAL_GRID_BY_YEAR) return [];
+  var rows;
+  if (step.annual) {
+    rows = TOTAL_GRID_BY_YEAR[step.year] || [];
+  } else {
+    rows = TOTAL_GRID_BY_STEP[step.key] || [];
+  }
+  var byCell = {};
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (excludeStations && r.isStation) continue;
+    var k = r.lng + "," + r.lat;
+    byCell[k] = (byCell[k] || 0) + r.n;
+  }
+  var out = [];
+  for (var key in byCell) {
+    var p = key.split(",");
+    out.push({ lng: +p[0], lat: +p[1], value: byCell[key] });
+  }
+  return out;
+}
+
+// Diverging color: gray at citywide ratio, warm above (assault overrepresented),
+// cool below (assault underrepresented). The intensity scales with how far the
+// bin's ratio is from the citywide ratio.
+function pctCrimeColor(binRatio, citywideRatio) {
+  // Compute the relative deviation from citywide ratio.
+  // Ratio of 0.30 in a city where the average is 0.15 = 2x overrepresented.
+  if (citywideRatio <= 0) return [180, 180, 180, 200];
+  var rel = binRatio / citywideRatio;
+  // Compress with log-ish scaling so a 2-3x deviation reads clearly
+  // and 5-10x deviation saturates to the most intense color.
+  var t;
+  if (rel >= 1) {
+    // Overrepresented — warm scale
+    t = Math.min(1, Math.log(rel) / Math.log(3));  // 3x = full warm
+  } else {
+    // Underrepresented — cool scale
+    t = -Math.min(1, Math.log(1/rel) / Math.log(3));
+  }
+  // Diverging palette around 0
+  var stops = [
+    [-1.0, [40, 90, 150]],   // deep blue (rare for assault)
+    [-0.5, [120, 160, 200]], // light blue
+    [-0.1, [200, 210, 220]], // pale blue
+    [ 0.0, [210, 210, 210]], // light gray (near citywide average)
+    [ 0.1, [240, 215, 200]], // pale orange
+    [ 0.5, [240, 150, 95]],  // medium orange
+    [ 1.0, [220, 60, 40]]    // deep red (heavily overrepresented)
+  ];
+  for (var i = 1; i < stops.length; i++) {
+    var t0 = stops[i-1][0], c0 = stops[i-1][1];
+    var t1 = stops[i][0],   c1 = stops[i][1];
+    if (t <= t1) {
+      var u = (t - t0) / (t1 - t0);
+      return [
+        Math.round(c0[0] + (c1[0]-c0[0]) * u),
+        Math.round(c0[1] + (c1[1]-c0[1]) * u),
+        Math.round(c0[2] + (c1[2]-c0[2]) * u),
+        220
+      ];
+    }
+  }
+  return [220, 60, 40, 220];
+}
+
+function handleHoverPctCrime(info, step, citywideRatio) {
+  var tt = document.getElementById("tooltip");
+  if (info.object) {
+    var b = info.object;
+    var ratio = b.ratio;
+    var pct = (ratio * 100).toFixed(1) + "%";
+    var cityPct = (citywideRatio * 100).toFixed(1) + "%";
+    var rel = citywideRatio > 0 ? (ratio / citywideRatio) : 0;
+    var relText, relColor;
+    if (rel >= 1.5)      { relText = (rel).toFixed(1) + "x the citywide rate"; relColor = "#e7466d"; }
+    else if (rel >= 1.1) { relText = "Above average"; relColor = "#e7466d"; }
+    else if (rel >= 0.9) { relText = "Near citywide average"; relColor = "#bbb"; }
+    else if (rel >= 0.5) { relText = "Below average"; relColor = "#5a9eff"; }
+    else                 { relText = (1/rel).toFixed(1) + "x less than citywide"; relColor = "#5a9eff"; }
+    var text =
+      '<strong style="font-size:14px;font-weight:700;color:' + relColor + ';">' + pct + ' are assaults</strong><br>'
+      + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' &middot; ' + relText + '</span><br>'
+      + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + b.assault.toLocaleString() + ' assault &middot; '
+      + b.total.toLocaleString() + ' total complaints</span><br>'
+      + '<span style="color:rgba(255,255,255,.35);font-size:10px;">Citywide average this period: ' + cityPct + '</span>';
+    tt.innerHTML = text;
+    var ttW = tt.offsetWidth || 200, ttH = tt.offsetHeight || 80;
+    var W = window.innerWidth, H = window.innerHeight;
+    var lx = info.x + 16, ty = info.y - ttH/2;
+    if (lx + ttW > W - 8) lx = info.x - ttW - 16;
+    if (ty < 4) ty = 4;
+    if (ty + ttH > H - 4) ty = H - ttH - 4;
+    tt.style.left = lx + "px";
+    tt.style.top = ty + "px";
+    tt.classList.add("visible");
+  } else {
+    tt.classList.remove("visible");
+  }
+}
+
+// =============================================================================
 // BUILD LAYER
 // =============================================================================
 function buildLayers() {
@@ -1067,7 +1260,64 @@ function buildLayers() {
 
   var layers = [];
 
-  if (mapStyle === "heat" && !d.isCompare) {
+  if (mapStyle === "pctcrime" && !d.isCompare) {
+    // Percent-of-crime mode: shows assault as a share of total complaints in
+    // each hex. Diverging color around the citywide assault ratio so hexes
+    // where assault is OVER-represented glow warm and UNDER-represented glow cool.
+    var HEX_RADIUS_PC = 300;
+    // Bin assault data
+    var assaultBins = binPointsToHexGrid(pts, HEX_RADIUS_PC);
+    var assaultByKey = {};
+    for (var ai = 0; ai < assaultBins.length; ai++) assaultByKey[assaultBins[ai].key] = assaultBins[ai];
+    // Bin total crime data
+    var totalPts = getTotalCrimePoints(step);
+    var totalBins = binPointsToHexGrid(totalPts, HEX_RADIUS_PC);
+    var totalByKey = {};
+    for (var ti = 0; ti < totalBins.length; ti++) totalByKey[totalBins[ti].key] = totalBins[ti];
+    // Compute citywide ratio (across all bins) for the diverging midpoint
+    var sumAssault = 0, sumTotal = 0;
+    for (var ki in assaultByKey) sumAssault += assaultByKey[ki].delta;
+    for (var kt in totalByKey)   sumTotal   += totalByKey[kt].delta;
+    var citywideRatio = sumTotal > 0 ? (sumAssault / sumTotal) : 0;
+    // Build draw bins: union of keys, only those with enough volume
+    var pctBins = [];
+    var allKeys = {};
+    for (var k1 in assaultByKey) allKeys[k1] = true;
+    for (var k2 in totalByKey)   allKeys[k2] = true;
+    var MIN_TOTAL_VOLUME = 25;  // need at least this many total complaints to compute meaningful ratio
+    for (var key in allKeys) {
+      var aBin = assaultByKey[key] || null;
+      var tBin = totalByKey[key]   || null;
+      // Use the position from whichever bin we have
+      var lng = aBin ? aBin.lng : tBin.lng;
+      var lat = aBin ? aBin.lat : tBin.lat;
+      var aCount = aBin ? aBin.delta : 0;
+      var tCount = tBin ? tBin.delta : 0;
+      if (tCount < MIN_TOTAL_VOLUME) continue;
+      var ratio = tCount > 0 ? (aCount / tCount) : 0;
+      pctBins.push({
+        key: key, lng: lng, lat: lat,
+        assault: aCount, total: tCount, ratio: ratio,
+        citywideRatio: citywideRatio
+      });
+    }
+    layers.push(new deck.ColumnLayer({
+      id: "pctcrime",
+      data: pctBins,
+      diskResolution: 6,
+      radius: HEX_RADIUS_PC,
+      extruded: false,
+      getPosition: function(b) { return [b.lng, b.lat]; },
+      getFillColor: function(b) { return pctCrimeColor(b.ratio, citywideRatio); },
+      getLineColor: [0, 0, 0, 0],
+      pickable: true,
+      coverage: 0.92,
+      updateTriggers: {
+        getFillColor: [tIdx, offMode, excludeStations]
+      },
+      onHover: function(info) { handleHoverPctCrime(info, step, citywideRatio); }
+    }));
+  } else if (mapStyle === "heat" && !d.isCompare) {
     layers.push(new deck.HeatmapLayer({
       id: "heat",
       data: pts,
@@ -1211,9 +1461,13 @@ function buildLayers() {
       pickable: false,
       lineWidthUnits: "pixels",
       getLineColor: function(f) {
-        return subwayLineColor(f.properties && (f.properties.rt_symbol || f.properties.name || ""));
+        var p = f.properties || {};
+        // Try common property names used by different NYC subway GeoJSON sources
+        var idStr = p.rt_symbol || p.RT_SYMBOL || p.route_id || p.ROUTE_ID
+                 || p.name || p.NAME || p.LINES || p.LINE || p.line || "";
+        return subwayLineColor(idStr);
       },
-      getLineWidth: 2.2,
+      getLineWidth: 2.5,
       lineWidthMinPixels: 1.5,
       parameters: { depthTest: false }
     }));
@@ -1462,6 +1716,22 @@ function updateCaption(step) {
       if (topPct) html += "Highest volume: " + topPct + ". ";
       html += "Spike height shows complaint count in each ~300m area.";
     }
+    // Override for pctcrime style (still totals mode, but different visualization)
+    if (mapStyle === "pctcrime" && TOTAL_CRIME_DATA) {
+      // Compute citywide ratio for this step
+      var assaultPts = dT.points || [];
+      var totalPts = getTotalCrimePoints(step);
+      var sumA = 0, sumT = 0;
+      for (var i = 0; i < assaultPts.length; i++) sumA += assaultPts[i].value;
+      for (var j = 0; j < totalPts.length; j++)   sumT += totalPts[j].value;
+      var ratioPct = sumT > 0 ? (sumA / sumT * 100).toFixed(1) : "—";
+      html = "Citywide, assaults made up <strong>" + ratioPct + "%</strong> of all reported "
+           + "crime in " + label + ". "
+           + "Hexagons in <span class=\"up\">red</span> are neighborhoods where assault is "
+           + "an unusually large share of local crime; "
+           + "<span style=\"color:#5a9eff;font-weight:400;font-style:normal;\">blue</span> hexagons "
+           + "see a smaller-than-average share. Hover any hexagon for local numbers.";
+    }
   }
   el.innerHTML = html;
 }
@@ -1508,9 +1778,27 @@ function setMode(mode, btn) {
     if (offenseGroup) offenseGroup.classList.add("disabled");
     // Hide the filter hexagons panel — it's not applicable in YoY mode
     if (filterPanel) filterPanel.style.display = "none";
+    // Heatmap and % of crime don't work in compare mode — switch back to hex
+    if (mapStyle === "heat" || mapStyle === "pctcrime") {
+      mapStyle = "hex";
+      document.querySelectorAll(".tr-group .pill-sm").forEach(function(b){
+        if (b.id === "style-hex") b.classList.add("active");
+        else if (b.id === "style-heat" || b.id === "style-pctcrime") b.classList.remove("active");
+      });
+    }
+    // Grey out the non-applicable map style buttons in YoY mode
+    var heatBtn = document.getElementById("style-heat");
+    var pctBtn  = document.getElementById("style-pctcrime");
+    if (heatBtn) { heatBtn.style.opacity = "0.3"; heatBtn.style.pointerEvents = "none"; }
+    if (pctBtn)  { pctBtn.style.opacity  = "0.3"; pctBtn.style.pointerEvents  = "none"; }
   } else {
     if (offenseGroup) offenseGroup.classList.remove("disabled");
     if (filterPanel) filterPanel.style.display = "";
+    // Re-enable map style buttons
+    var heatBtn2 = document.getElementById("style-heat");
+    var pctBtn2  = document.getElementById("style-pctcrime");
+    if (heatBtn2) { heatBtn2.style.opacity = ""; heatBtn2.style.pointerEvents = ""; }
+    if (pctBtn2)  { pctBtn2.style.opacity  = ""; pctBtn2.style.pointerEvents  = ""; }
     // Restore offMode based on which offense pill is currently active
     var activePill = document.querySelector("#offense-group .pill-sm.active");
     if (activePill && activePill.id === "off-felony") offMode = "felony";
@@ -1552,25 +1840,42 @@ function setGranularity(g, btn) {
   updateLayer();
 }
 
-function setMapStyle(style, btn) {
-  if (offMode === "compare" && style === "heat") {
-    // Heatmap doesn't work well for compare mode
+async function setMapStyle(style, btn) {
+  if (offMode === "compare" && (style === "heat" || style === "pctcrime")) {
+    // Heatmap and % of crime don't work well for compare mode
     return;
   }
+  // For % of crime mode, load the total crime data first if we don't have it
+  if (style === "pctcrime" && !TOTAL_CRIME_DATA) {
+    // Show a brief loading indicator
+    var origText = btn.textContent;
+    btn.textContent = "Loading…";
+    btn.disabled = true;
+    var ok = await loadTotalCrime();
+    btn.textContent = origText;
+    btn.disabled = false;
+    if (!ok) {
+      alert("Could not load total-crime data. The map may not have access to total_crime_map_data.json.");
+      return;
+    }
+  }
   mapStyle = style;
-  // The map style group is the 4th .tr-group (index 3) in the new layout
-  // (View mode, Offense type, Time granularity, Map style)
   var msGroup = btn.closest(".tr-group");
   if (msGroup) {
     msGroup.querySelectorAll(".pill-sm").forEach(function(b){b.classList.remove("active");});
   }
   btn.classList.add("active");
-  // Disable 3D extrusion toggle when not on hex view (it doesn't apply to heatmap)
+  // Disable 3D extrusion toggle when not on hex view (it doesn't apply elsewhere)
   var extrudeRow = document.getElementById("extrude-toggle");
   if (extrudeRow) {
     extrudeRow.disabled = (style !== "hex");
     var parentLabel = extrudeRow.closest(".toggle-row");
     if (parentLabel) parentLabel.style.opacity = (style !== "hex") ? "0.35" : "";
+  }
+  // Hide the filter panel in % of crime mode (we use an internal min-volume threshold)
+  var filterPanel = document.getElementById("filter-panel");
+  if (filterPanel && offMode !== "compare") {
+    filterPanel.style.display = (style === "pctcrime") ? "none" : "";
   }
   updateLayer();
 }
@@ -1606,19 +1911,30 @@ function toggleSubway(checked) {
 }
 
 async function fetchSubwayData() {
-  // Use NYC OpenData "Subway Lines" GeoJSON. Public dataset, no key needed.
-  // Each feature has properties.name like "1-2-3" listing routes on that segment.
-  var url = "https://data.cityofnewyork.us/api/geospatial/3qz8-muuu?method=export&format=GeoJSON";
-  try {
-    var r = await fetch(url);
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    SUBWAY_DATA = await r.json();
-  } catch(e) {
-    // Fallback: try Carto-hosted backup
-    var r2 = await fetch("https://raw.githubusercontent.com/nycplanning/td-citywide-mobility-survey/master/data/raw/transportation_planning_zones/subway_lines.geojson");
-    if (!r2.ok) throw e;
-    SUBWAY_DATA = await r2.json();
+  // Try multiple sources for the NYC subway lines GeoJSON. CORS and availability
+  // vary, so we fall through to backups if the primary fails.
+  var sources = [
+    // GitHub-hosted MTA subway lines (CORS-friendly)
+    "https://raw.githubusercontent.com/CityOfNewYork/nyc-geo-metadata/master/Metadata/Metadata_SubwayLines.json",
+    // CartoDB-hosted backup
+    "https://raw.githubusercontent.com/nycplanning/td-citywide-mobility-survey/master/data/raw/transportation_planning_zones/subway_lines.geojson",
+    // NYC OpenData export
+    "https://data.cityofnewyork.us/api/geospatial/s7zz-qmyz?method=export&format=GeoJSON"
+  ];
+  var lastErr = null;
+  for (var i = 0; i < sources.length; i++) {
+    try {
+      var r = await fetch(sources[i]);
+      if (!r.ok) { lastErr = new Error("HTTP " + r.status + " from " + sources[i]); continue; }
+      var data = await r.json();
+      if (data && data.features && data.features.length) {
+        SUBWAY_DATA = data;
+        console.log("Loaded subway lines from " + sources[i] + " (" + data.features.length + " features)");
+        return;
+      }
+    } catch(e) { lastErr = e; }
   }
+  throw lastErr || new Error("No subway source returned valid data");
 }
 
 function setOffense(mode, btn) {
