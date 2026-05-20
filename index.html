@@ -41,6 +41,8 @@ body{font-family:var(--fp);font-weight:300;color:var(--white);background:var(--b
 .tr-group{background:rgba(5,5,7,.85);padding:8px 10px;border-left:2px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
 .tr-label{font-weight:700;font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.4);}
 .view-pills{display:flex;gap:2px;}
+.view-pills-stack{flex-wrap:wrap;}
+.view-pills-stack .pill-sm{flex:1 1 auto;min-width:0;}
 .pill-sm{font-family:var(--fp);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);background:rgba(5,5,7,.6);color:rgba(255,255,255,.5);padding:5px 10px;cursor:pointer;transition:all .1s;}
 .pill-sm:hover:not(.active){border-color:rgba(255,255,255,.5);color:var(--white);}
 .pill-sm.active{background:var(--white);color:var(--black);border-color:var(--white);}
@@ -260,9 +262,10 @@ input[type=range].playing::-webkit-slider-thumb{background:var(--yellow);}
   <div class="top-right">
     <div class="tr-group prominent">
       <div class="tr-label" style="color:var(--yellow);">View mode</div>
-      <div class="view-pills">
+      <div class="view-pills view-pills-stack">
         <button class="pill-sm active" id="mode-totals" onclick="setMode('totals',this)">Totals</button>
         <button class="pill-sm" id="mode-compare" onclick="setMode('compare',this)">YoY change</button>
+        <button class="pill-sm" id="mode-since2006" onclick="setMode('since2006',this)">Change since 2006</button>
       </div>
     </div>
     <div class="tr-group">
@@ -587,6 +590,50 @@ function getStepData(step) {
     rows = GRID_BY_STEP[step.key] || [];
   }
 
+  if (offMode === "since2006") {
+    // Change-since-2006 comparison:
+    // Current = sum from Q1 to current quarter of current year (or full year if annual)
+    // Baseline = same quarter range in 2006
+    var curYear2 = step.year, curQ2 = step.quarter;
+    var baselineYear = 2006;
+
+    var curAgg2 = {}, baseAgg2 = {};
+    function addToAgg2(rows, agg, maxQ) {
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (r.quarter > maxQ) continue;
+        if (excludeStations && r.isStation) continue;
+        var k = r.lng + "," + r.lat;
+        agg[k] = (agg[k] || 0) + r.n;
+      }
+    }
+    addToAgg2(GRID_BY_YEAR[curYear2] || [], curAgg2, curQ2);
+    addToAgg2(GRID_BY_YEAR[baselineYear] || [], baseAgg2, curQ2);
+
+    var allKeys2 = {};
+    for (var k1 in curAgg2)  allKeys2[k1] = true;
+    for (var k2 in baseAgg2) allKeys2[k2] = true;
+
+    var points2 = [];
+    var maxAbsDelta2 = 1;
+    for (var key in allKeys2) {
+      var parts = key.split(",");
+      var lng = +parts[0], lat = +parts[1];
+      var c = curAgg2[key]  || 0;
+      var p = baseAgg2[key] || 0;
+      var delta = c - p;
+      if (Math.abs(delta) > maxAbsDelta2) maxAbsDelta2 = Math.abs(delta);
+      points2.push({lng:lng, lat:lat, value:delta, cur:c, prior:p});
+    }
+
+    return {
+      points: points2, maxVal: maxAbsDelta2,
+      totals: {cur: sumObj(curAgg2), prior: sumObj(baseAgg2)},
+      isCompare: true,        // shares rendering path with YoY compare
+      isSince2006: true
+    };
+  }
+
   if (offMode === "compare") {
     // YoY YTD comparison:
     // Current = sum from Q1 to current quarter of current year
@@ -667,11 +714,11 @@ function sumObj(o) { var s = 0; for (var k in o) s += o[k]; return s; }
 // =============================================================================
 function getPrecinctRankings(step) {
   var rows;
-  if (offMode === "compare") {
-    // YoY YTD precinct totals
+  if (offMode === "compare" || offMode === "since2006") {
+    var compareToYear = (offMode === "since2006") ? 2006 : (step.year - 1);
     var byPctCur = {}, byPctPrior = {};
     var curRows = GRID_BY_YEAR[step.year] || [];
-    var priorRows = GRID_BY_YEAR[step.year-1] || [];
+    var priorRows = GRID_BY_YEAR[compareToYear] || [];
     for (var i = 0; i < curRows.length; i++) {
       var r = curRows[i];
       if (r.quarter > step.quarter) continue;
@@ -743,6 +790,14 @@ function updateRankings(step) {
     var sortedAsc  = ranks.slice().sort(function(a,b){return (a.delta||0) - (b.delta||0);});
     topEl.innerHTML = renderCompareRows(sortedDesc.slice(0, 5));
     botEl.innerHTML = renderCompareRows(sortedAsc.slice(0, 5));
+  } else if (offMode === "since2006") {
+    if (topTitle) topTitle.textContent = "Largest increase since 2006";
+    if (botTitle) botTitle.textContent = "Largest decrease since 2006";
+    if (subtextEl) subtextEl.textContent = "Precincts with the biggest long-term shift from the 2006 baseline";
+    var sortedDesc2 = ranks.slice().sort(function(a,b){return (b.delta||0) - (a.delta||0);});
+    var sortedAsc2  = ranks.slice().sort(function(a,b){return (a.delta||0) - (b.delta||0);});
+    topEl.innerHTML = renderCompareRows(sortedDesc2.slice(0, 5));
+    botEl.innerHTML = renderCompareRows(sortedAsc2.slice(0, 5));
   } else {
     if (topTitle) topTitle.textContent = "Top 5 highest";
     if (botTitle) botTitle.textContent = "Bottom 5 lowest";
@@ -851,6 +906,41 @@ function updateLegend(maxVal, mode) {
       legendHTML += '<div class="legend-stop">' +
         '<div class="legend-swatch" style="background:' + rgbStr(bands[b].color) + ';"></div>' +
         '<span>' + bands[b].label + '</span></div>';
+    }
+  } else if (mode === "since2006") {
+    title = "Change vs 2006";
+    subtitle = "Net change in each ~400m area vs the 2006 baseline";
+    // Use the data-driven bands stored by buildLayers
+    var b2 = window._since2006Bands;
+    var since2006LegendBands;
+    if (b2) {
+      var f = function(n) { var s = n > 0 ? "+" : ""; return s + n.toLocaleString(); };
+      since2006LegendBands = [
+        { color: [195, 40, 40],    label: f(b2.posHigh) + " or more" },
+        { color: [225, 130, 110],  label: f(b2.posMid) + " to " + (b2.posHigh - 1) },
+        { color: [240, 200, 195],  label: f(b2.posLow) + " to " + (b2.posMid - 1) },
+        { color: [185, 185, 185],  label: "About the same" },
+        { color: [180, 220, 195],  label: f(b2.negLow) + " to " + (b2.negMid + 1) },
+        { color: [110, 180, 130],  label: f(b2.negMid) + " to " + (b2.negHigh + 1) },
+        { color: [30, 110, 50],    label: f(b2.negHigh) + " or fewer" },
+        { color: [55, 55, 60],     label: "No assaults" },
+      ];
+    } else {
+      since2006LegendBands = [
+        { color: [195, 40, 40],    label: "Much higher than 2006" },
+        { color: [225, 130, 110],  label: "Moderately higher" },
+        { color: [240, 200, 195],  label: "Slightly higher" },
+        { color: [185, 185, 185],  label: "About the same" },
+        { color: [180, 220, 195],  label: "Slightly lower" },
+        { color: [110, 180, 130],  label: "Moderately lower" },
+        { color: [30, 110, 50],    label: "Much lower than 2006" },
+        { color: [55, 55, 60],     label: "No assaults" },
+      ];
+    }
+    for (var bs = 0; bs < since2006LegendBands.length; bs++) {
+      legendHTML += '<div class="legend-stop">' +
+        '<div class="legend-swatch" style="background:' + rgbStr(since2006LegendBands[bs].color) + ';"></div>' +
+        '<span>' + since2006LegendBands[bs].label + '</span></div>';
     }
   } else if (mapStyle === "pctcrime") {
     // % of crime mode — diverging scale around citywide average
@@ -1090,23 +1180,54 @@ function compareColorForDelta(delta) {
   return [30, 110, 50, 230];                    // -5 or less — deep green
 }
 
+// Color function for change-since-2006 mode. Uses data-driven thresholds
+// passed in via the `bands` parameter (computed from percentiles of the
+// current step's data). Same diverging palette as YoY.
+function colorForSince2006Delta(delta, bands) {
+  if (delta >= bands.posHigh) return [195, 40, 40, 230];   // top band — deep red
+  if (delta >= bands.posMid)  return [225, 130, 110, 230]; // medium red
+  if (delta >= bands.posLow)  return [240, 200, 195, 220]; // light pink
+  if (delta === 0)            return [185, 185, 185, 200]; // exactly 0 — gray
+  // Tiny positive deltas below posLow → pale pink
+  if (delta > 0)              return [235, 220, 215, 200];
+  // Tiny negative deltas above negLow → pale green
+  if (delta > bands.negLow)   return [210, 230, 215, 200];
+  if (delta > bands.negMid)   return [180, 220, 195, 220]; // light green
+  if (delta > bands.negHigh)  return [110, 180, 130, 230]; // medium green
+  return [30, 110, 50, 230];                                // bottom band — deep green
+}
+
 function handleHoverCompare(info, step) {
   var tt = document.getElementById("tooltip");
   if (info.object) {
     var b = info.object;
     var text;
+    var isSince2006 = (offMode === "since2006");
+    var priorLabel = isSince2006 ? "2006 baseline" : ((step.year-1) + " Q" + step.quarter + " YTD");
+    var headerLabel = isSince2006 ? "since 2006" : "vs prior year";
     if (b.noData) {
+      var neitherLabel = isSince2006
+        ? ("Neither " + step.label + " nor 2006 had any complaints in this area")
+        : ("Neither " + step.label + " nor " + (step.year-1) + " Q" + step.quarter + " had any complaints in this area");
       text = '<strong style="font-size:14px;font-weight:700;color:#888;">No assaults</strong><br>'
-        + '<span style="color:rgba(255,255,255,.4);font-size:11px;">'
-        + 'Neither ' + step.label + ' nor ' + (step.year-1) + ' Q' + step.quarter + ' had any complaints in this area</span>';
+        + '<span style="color:rgba(255,255,255,.4);font-size:11px;">' + neitherLabel + '</span>';
     } else {
       var d = b.delta;
       var sign = d > 0 ? "+" : "";
       var color = d > 0 ? "#e7466d" : d < 0 ? "#3a8a3e" : "#bbb";
-      var headerText = d === 0 ? "No change" : sign + d.toLocaleString() + " assaults";
-      text = '<strong style="font-size:14px;font-weight:700;color:' + color + ';">' + headerText + '</strong><br>'
-        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + (step.year-1) + ' Q' + step.quarter + ' YTD</span><br>'
-        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + b.cur.toLocaleString() + ' this period &middot; ' + b.prior.toLocaleString() + ' prior period</span>';
+      var headerText = d === 0 ? "No change" : sign + d.toLocaleString() + " assaults " + headerLabel;
+      // Compute % change for since2006 (and YoY too — useful context)
+      var pctChange = "";
+      if (b.prior > 0) {
+        var p = (d / b.prior) * 100;
+        var psign = p > 0 ? "+" : "";
+        pctChange = " <span style=\"color:rgba(255,255,255,.4);font-size:12px;\">(" + psign + p.toFixed(0) + "%)</span>";
+      } else if (b.cur > 0 && b.prior === 0) {
+        pctChange = " <span style=\"color:rgba(255,255,255,.4);font-size:12px;\">(new)</span>";
+      }
+      text = '<strong style="font-size:14px;font-weight:700;color:' + color + ';">' + headerText + pctChange + '</strong><br>'
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + step.label + ' YTD vs ' + priorLabel + '</span><br>'
+        + '<span style="color:rgba(255,255,255,.5);font-size:11px;">' + b.cur.toLocaleString() + ' this period &middot; ' + b.prior.toLocaleString() + ' baseline</span>';
     }
     tt.innerHTML = text;
     var ttW = tt.offsetWidth || 200, ttH = tt.offsetHeight || 70;
@@ -1361,6 +1482,45 @@ function buildLayers() {
           });
         }
       }
+      // Compute data-driven thresholds for the change-since-2006 mode where
+      // deltas are much larger than YoY deltas (20 years of change vs 1 year).
+      // For YoY mode we keep the fixed small-delta bands (+5/+3/+1).
+      var since2006Bands = null;
+      if (d.isSince2006) {
+        // Get all non-zero deltas and find percentiles
+        var deltas = [];
+        for (var bi3 = 0; bi3 < bins.length; bi3++) {
+          if (bins[bi3].delta !== 0) deltas.push(bins[bi3].delta);
+        }
+        var pos = deltas.filter(function(x){return x > 0;}).sort(function(a,b){return a-b;});
+        var neg = deltas.filter(function(x){return x < 0;}).sort(function(a,b){return b-a;});
+        function pctile(arr, p) {
+          if (!arr.length) return 0;
+          return arr[Math.min(arr.length - 1, Math.floor(arr.length * p))];
+        }
+        // Use the 50th and 85th percentile of each side as band breakpoints.
+        // Round to nice numbers for display.
+        function roundNice(n) {
+          if (Math.abs(n) < 5) return Math.round(n);
+          if (Math.abs(n) < 20) return Math.round(n / 5) * 5;
+          if (Math.abs(n) < 100) return Math.round(n / 10) * 10;
+          if (Math.abs(n) < 500) return Math.round(n / 25) * 25;
+          return Math.round(n / 100) * 100;
+        }
+        since2006Bands = {
+          posHigh: roundNice(pctile(pos, 0.85)),
+          posMid:  roundNice(pctile(pos, 0.5)),
+          posLow:  Math.max(1, roundNice(pctile(pos, 0.15))),
+          negLow:  Math.min(-1, roundNice(pctile(neg, 0.15))),
+          negMid:  roundNice(pctile(neg, 0.5)),
+          negHigh: roundNice(pctile(neg, 0.85))
+        };
+        // Store bands globally so the legend can read them
+        window._since2006Bands = since2006Bands;
+      } else {
+        window._since2006Bands = null;
+      }
+
       layers.push(new deck.ColumnLayer({
         id: "compare-hex",
         data: drawBins,
@@ -1370,6 +1530,7 @@ function buildLayers() {
         getPosition: function(b) { return [b.lng, b.lat]; },
         getFillColor: function(b) {
           if (b.noData) return [55, 55, 60, 160]; // dark gray for empty hexes
+          if (since2006Bands) return colorForSince2006Delta(b.delta, since2006Bands);
           return compareColorForDelta(b.delta);
         },
         getLineColor: [0, 0, 0, 0],
@@ -1608,6 +1769,19 @@ function updateUI() {
       document.getElementById("year-sub").textContent =
         "Q" + step.quarter + " YTD vs " + (step.year - 1) + " Q" + step.quarter + " YTD";
     }
+  } else if (offMode === "since2006") {
+    if (step.annual) {
+      if (step.isPartial) {
+        document.getElementById("year-sub").textContent =
+          "Q" + step.quarter + " YTD vs 2006 Q" + step.quarter + " YTD";
+      } else {
+        document.getElementById("year-sub").textContent =
+          step.year + " vs 2006";
+      }
+    } else {
+      document.getElementById("year-sub").textContent =
+        "Q" + step.quarter + " YTD vs 2006 Q" + step.quarter + " YTD";
+    }
   } else {
     document.getElementById("year-sub").textContent =
       step.annual ? (step.isPartial ? "YEAR-TO-DATE TOTAL" : "ANNUAL TOTAL") : "QUARTERLY TOTAL";
@@ -1628,16 +1802,17 @@ function updateUI() {
   document.getElementById("play-btn").classList.toggle("playing", playing);
 
   var d = getStepData(step);
-  if (offMode === "compare") {
+  if (offMode === "compare" || offMode === "since2006") {
     var cur = d.totals.cur, prior = d.totals.prior;
     var delta = cur - prior;
     var pct = prior > 0 ? ((delta / prior) * 100).toFixed(1) : "—";
     var sign = delta > 0 ? "+" : "";
     var color = delta > 0 ? "#e7466d" : "#3a8a3e";
+    var baselineLabel = (offMode === "since2006") ? "2006" : "prior";
     document.getElementById("year-counts").innerHTML =
       '<strong style="color:' + color + ';">' + sign + delta.toLocaleString() +
       '</strong> change &nbsp;(' + sign + pct + '%) &nbsp;&middot;&nbsp; ' +
-      cur.toLocaleString() + ' vs ' + prior.toLocaleString() + ' prior';
+      cur.toLocaleString() + ' vs ' + prior.toLocaleString() + ' ' + baselineLabel;
   } else if (offMode === "combined") {
     var c = d.totals;
     document.getElementById("year-counts").innerHTML =
@@ -1688,6 +1863,27 @@ function updateCaption(step) {
              + " versus the same period a year earlier &mdash; "
              + sign + delta.toLocaleString() + " more incidents citywide. "
              + "Hover any hexagon to see local change.";
+      }
+    }
+  } else if (offMode === "since2006") {
+    // Change-since-2006 — describe the long-term shift
+    var dS = getStepData(step);
+    if (dS.totals && dS.totals.cur !== undefined) {
+      var curS = dS.totals.cur, baseS = dS.totals.prior;
+      var deltaS = curS - baseS;
+      var pctS = baseS > 0 ? (deltaS / baseS * 100) : 0;
+      var verbS = deltaS > 0 ? "are up" : deltaS < 0 ? "are down" : "are essentially flat";
+      var signS = deltaS > 0 ? "+" : "";
+      var spanS = deltaS > 0 ? "up" : deltaS < 0 ? "down" : "";
+      if (deltaS === 0) {
+        html = "Citywide assault complaints in " + label
+             + " are <strong>essentially the same</strong> as the 2006 baseline.";
+      } else {
+        html = "Citywide, assault complaints in " + label + " <span class=\"" + spanS + "\">"
+             + verbS + " " + Math.abs(pctS).toFixed(1) + "%</span> from the 2006 baseline &mdash; "
+             + signS + deltaS.toLocaleString() + " from " + baseS.toLocaleString() + ". "
+             + "<span class=\"" + spanS + "\">Red</span> hexagons show neighborhoods with more assaults than in 2006; "
+             + "<span class=\"down\">green</span> shows fewer. Hover for the local count and percent change.";
       }
     }
   } else {
@@ -1768,17 +1964,18 @@ var viewMode2 = "totals";  // "totals" or "compare"
 
 function setMode(mode, btn) {
   viewMode2 = mode;
-  document.querySelectorAll("#mode-totals,#mode-compare").forEach(function(b){b.classList.remove("active");});
+  document.querySelectorAll("#mode-totals,#mode-compare,#mode-since2006").forEach(function(b){b.classList.remove("active");});
   btn.classList.add("active");
   var offenseGroup = document.getElementById("offense-group");
   var filterPanel = document.getElementById("filter-panel");
-  if (mode === "compare") {
-    offMode = "compare";
+  var isCompareLike = (mode === "compare" || mode === "since2006");
+  if (isCompareLike) {
+    offMode = mode;  // either "compare" or "since2006"
     // Grey out the offense type group since it doesn't apply
     if (offenseGroup) offenseGroup.classList.add("disabled");
-    // Hide the filter hexagons panel — it's not applicable in YoY mode
+    // Hide the filter hexagons panel — it's not applicable in change modes
     if (filterPanel) filterPanel.style.display = "none";
-    // Heatmap and % of crime don't work in compare mode — switch back to hex
+    // Heatmap and % of crime don't work in change modes — switch back to hex
     if (mapStyle === "heat" || mapStyle === "pctcrime") {
       mapStyle = "hex";
       document.querySelectorAll(".tr-group .pill-sm").forEach(function(b){
@@ -1786,7 +1983,7 @@ function setMode(mode, btn) {
         else if (b.id === "style-heat" || b.id === "style-pctcrime") b.classList.remove("active");
       });
     }
-    // Grey out the non-applicable map style buttons in YoY mode
+    // Grey out the non-applicable map style buttons
     var heatBtn = document.getElementById("style-heat");
     var pctBtn  = document.getElementById("style-pctcrime");
     if (heatBtn) { heatBtn.style.opacity = "0.3"; heatBtn.style.pointerEvents = "none"; }
@@ -1805,7 +2002,7 @@ function setMode(mode, btn) {
     else if (activePill && activePill.id === "off-misd") offMode = "misd";
     else offMode = "combined";
   }
-  // Re-build steps so 2006 gets locked/unlocked
+  // Re-build steps so 2006 gets locked/unlocked appropriately
   rebuildSteps(true);
   updateLayer();
 }
@@ -1841,8 +2038,8 @@ function setGranularity(g, btn) {
 }
 
 async function setMapStyle(style, btn) {
-  if (offMode === "compare" && (style === "heat" || style === "pctcrime")) {
-    // Heatmap and % of crime don't work well for compare mode
+  if ((offMode === "compare" || offMode === "since2006") && (style === "heat" || style === "pctcrime")) {
+    // Heatmap and % of crime don't work well for change modes
     return;
   }
   // For % of crime mode, load the total crime data first if we don't have it
@@ -2180,8 +2377,9 @@ function rebuildSteps(preserveTime) {
   // Remember current real-world time to restore after rebuild
   var oldStep = tSteps[tIdx];
   tSteps = buildSteps();
-  // In compare mode, drop 2006 — no 2005 to compare against
-  if (offMode === "compare") {
+  // In change modes, drop 2006 — it's either the un-comparable year (YoY)
+  // or the baseline itself (since2006).
+  if (offMode === "compare" || offMode === "since2006") {
     tSteps = tSteps.filter(function(s){ return s.year >= 2007; });
   }
   // Try to restore old time
