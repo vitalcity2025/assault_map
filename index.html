@@ -888,59 +888,32 @@ function updateLegend(maxVal, mode) {
   var title = "Assault count";
   var subtitle = "";
 
-  if (mode === "compare") {
-    title = "Change vs prior YTD";
-    subtitle = "Each hexagon shows net change across 400m";
-    // Hard-coded bands that match compareColorForDelta() exactly
+  if (mode === "compare" || mode === "since2006") {
+    // Both modes share the same color scale and legend bands.
+    // Static thresholds means colors are comparable across time and across modes.
+    if (mode === "compare") {
+      title = "Change vs prior YTD";
+      subtitle = "Each hexagon shows net change across 400m";
+    } else {
+      title = "Change vs 2006";
+      subtitle = "Each hexagon shows net change vs the 2006 baseline";
+    }
     var bands = [
-      { color: [195, 40, 40],    label: "+5 or more" },
-      { color: [225, 130, 110],  label: "+3 to +4" },
-      { color: [240, 200, 195],  label: "+1 to +2" },
+      { color: [130, 20, 25],    label: "+50 or more" },
+      { color: [195, 40, 40],    label: "+10 to +49" },
+      { color: [225, 130, 110],  label: "+5 to +9" },
+      { color: [240, 200, 195],  label: "+1 to +4" },
       { color: [185, 185, 185],  label: "No change" },
-      { color: [180, 220, 195],  label: "−1 to −2" },
-      { color: [110, 180, 130],  label: "−3 to −4" },
-      { color: [30, 110, 50],    label: "−5 or more" },
+      { color: [180, 220, 195],  label: "−1 to −4" },
+      { color: [110, 180, 130],  label: "−5 to −9" },
+      { color: [30, 110, 50],    label: "−10 to −49" },
+      { color: [10, 60, 25],     label: "−50 or less" },
       { color: [55, 55, 60],     label: "No assaults" },
     ];
     for (var b = 0; b < bands.length; b++) {
       legendHTML += '<div class="legend-stop">' +
         '<div class="legend-swatch" style="background:' + rgbStr(bands[b].color) + ';"></div>' +
         '<span>' + bands[b].label + '</span></div>';
-    }
-  } else if (mode === "since2006") {
-    title = "Change vs 2006";
-    subtitle = "Net change in each ~400m area vs the 2006 baseline";
-    // Use the data-driven bands stored by buildLayers
-    var b2 = window._since2006Bands;
-    var since2006LegendBands;
-    if (b2) {
-      var f = function(n) { var s = n > 0 ? "+" : ""; return s + n.toLocaleString(); };
-      since2006LegendBands = [
-        { color: [195, 40, 40],    label: f(b2.posHigh) + " or more" },
-        { color: [225, 130, 110],  label: f(b2.posMid) + " to " + (b2.posHigh - 1) },
-        { color: [240, 200, 195],  label: f(b2.posLow) + " to " + (b2.posMid - 1) },
-        { color: [185, 185, 185],  label: "About the same" },
-        { color: [180, 220, 195],  label: f(b2.negLow) + " to " + (b2.negMid + 1) },
-        { color: [110, 180, 130],  label: f(b2.negMid) + " to " + (b2.negHigh + 1) },
-        { color: [30, 110, 50],    label: f(b2.negHigh) + " or fewer" },
-        { color: [55, 55, 60],     label: "No assaults" },
-      ];
-    } else {
-      since2006LegendBands = [
-        { color: [195, 40, 40],    label: "Much higher than 2006" },
-        { color: [225, 130, 110],  label: "Moderately higher" },
-        { color: [240, 200, 195],  label: "Slightly higher" },
-        { color: [185, 185, 185],  label: "About the same" },
-        { color: [180, 220, 195],  label: "Slightly lower" },
-        { color: [110, 180, 130],  label: "Moderately lower" },
-        { color: [30, 110, 50],    label: "Much lower than 2006" },
-        { color: [55, 55, 60],     label: "No assaults" },
-      ];
-    }
-    for (var bs = 0; bs < since2006LegendBands.length; bs++) {
-      legendHTML += '<div class="legend-stop">' +
-        '<div class="legend-swatch" style="background:' + rgbStr(since2006LegendBands[bs].color) + ';"></div>' +
-        '<span>' + since2006LegendBands[bs].label + '</span></div>';
     }
   } else if (mapStyle === "pctcrime") {
     // % of crime mode — diverging scale around citywide average
@@ -1170,32 +1143,22 @@ function buildNYCUniverse(radiusMeters) {
 }
 
 // Sharp color bands keyed to legend exactly.
+// Shared color function for both YoY change and change-since-2006 modes.
+// Same scale across both modes so colors mean the same thing regardless of
+// which baseline you're comparing against.
 function compareColorForDelta(delta) {
-  if (delta >= 5)  return [195, 40, 40, 230];   // +5 or more — deep red
-  if (delta >= 3)  return [225, 130, 110, 230]; // +3 to +4 — medium red
-  if (delta >= 1)  return [240, 200, 195, 220]; // +1 to +2 — light pink
-  if (delta === 0) return [185, 185, 185, 200]; // exactly 0 — light gray
-  if (delta >= -2) return [180, 220, 195, 220]; // -1 to -2 — light green
-  if (delta >= -4) return [110, 180, 130, 230]; // -3 to -4 — medium green
-  return [30, 110, 50, 230];                    // -5 or less — deep green
+  if (delta >= 50)  return [130, 20, 25, 240];   // +50 or more — very dark red
+  if (delta >= 10)  return [195, 40, 40, 230];   // +10 to +49 — deep red
+  if (delta >= 5)   return [225, 130, 110, 230]; // +5 to +9 — medium red
+  if (delta >= 1)   return [240, 200, 195, 220]; // +1 to +4 — light pink
+  if (delta === 0)  return [185, 185, 185, 200]; // exactly 0 — light gray
+  if (delta >= -4)  return [180, 220, 195, 220]; // -1 to -4 — light green
+  if (delta >= -9)  return [110, 180, 130, 230]; // -5 to -9 — medium green
+  if (delta >= -49) return [30, 110, 50, 230];   // -10 to -49 — deep green
+  return [10, 60, 25, 240];                       // -50 or less — very dark green
 }
 
-// Color function for change-since-2006 mode. Uses data-driven thresholds
-// passed in via the `bands` parameter (computed from percentiles of the
-// current step's data). Same diverging palette as YoY.
-function colorForSince2006Delta(delta, bands) {
-  if (delta >= bands.posHigh) return [195, 40, 40, 230];   // top band — deep red
-  if (delta >= bands.posMid)  return [225, 130, 110, 230]; // medium red
-  if (delta >= bands.posLow)  return [240, 200, 195, 220]; // light pink
-  if (delta === 0)            return [185, 185, 185, 200]; // exactly 0 — gray
-  // Tiny positive deltas below posLow → pale pink
-  if (delta > 0)              return [235, 220, 215, 200];
-  // Tiny negative deltas above negLow → pale green
-  if (delta > bands.negLow)   return [210, 230, 215, 200];
-  if (delta > bands.negMid)   return [180, 220, 195, 220]; // light green
-  if (delta > bands.negHigh)  return [110, 180, 130, 230]; // medium green
-  return [30, 110, 50, 230];                                // bottom band — deep green
-}
+// Both YoY and since-2006 modes now use compareColorForDelta above — same scale.
 
 function handleHoverCompare(info, step) {
   var tt = document.getElementById("tooltip");
@@ -1482,45 +1445,6 @@ function buildLayers() {
           });
         }
       }
-      // Compute data-driven thresholds for the change-since-2006 mode where
-      // deltas are much larger than YoY deltas (20 years of change vs 1 year).
-      // For YoY mode we keep the fixed small-delta bands (+5/+3/+1).
-      var since2006Bands = null;
-      if (d.isSince2006) {
-        // Get all non-zero deltas and find percentiles
-        var deltas = [];
-        for (var bi3 = 0; bi3 < bins.length; bi3++) {
-          if (bins[bi3].delta !== 0) deltas.push(bins[bi3].delta);
-        }
-        var pos = deltas.filter(function(x){return x > 0;}).sort(function(a,b){return a-b;});
-        var neg = deltas.filter(function(x){return x < 0;}).sort(function(a,b){return b-a;});
-        function pctile(arr, p) {
-          if (!arr.length) return 0;
-          return arr[Math.min(arr.length - 1, Math.floor(arr.length * p))];
-        }
-        // Use the 50th and 85th percentile of each side as band breakpoints.
-        // Round to nice numbers for display.
-        function roundNice(n) {
-          if (Math.abs(n) < 5) return Math.round(n);
-          if (Math.abs(n) < 20) return Math.round(n / 5) * 5;
-          if (Math.abs(n) < 100) return Math.round(n / 10) * 10;
-          if (Math.abs(n) < 500) return Math.round(n / 25) * 25;
-          return Math.round(n / 100) * 100;
-        }
-        since2006Bands = {
-          posHigh: roundNice(pctile(pos, 0.85)),
-          posMid:  roundNice(pctile(pos, 0.5)),
-          posLow:  Math.max(1, roundNice(pctile(pos, 0.15))),
-          negLow:  Math.min(-1, roundNice(pctile(neg, 0.15))),
-          negMid:  roundNice(pctile(neg, 0.5)),
-          negHigh: roundNice(pctile(neg, 0.85))
-        };
-        // Store bands globally so the legend can read them
-        window._since2006Bands = since2006Bands;
-      } else {
-        window._since2006Bands = null;
-      }
-
       layers.push(new deck.ColumnLayer({
         id: "compare-hex",
         data: drawBins,
@@ -1530,7 +1454,6 @@ function buildLayers() {
         getPosition: function(b) { return [b.lng, b.lat]; },
         getFillColor: function(b) {
           if (b.noData) return [55, 55, 60, 160]; // dark gray for empty hexes
-          if (since2006Bands) return colorForSince2006Delta(b.delta, since2006Bands);
           return compareColorForDelta(b.delta);
         },
         getLineColor: [0, 0, 0, 0],
